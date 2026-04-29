@@ -7,13 +7,13 @@ import { Container } from "@/components/container";
 import { Footer } from "@/components/footer";
 
 export const blackhood = localFont({
-  src: '../../public/fonts/blackhood.ttf',
+  src: '../../../public/fonts/blackhood.ttf',
   display: 'swap',
   variable: '--font-blackhood',
 })
 
 export const interDisplay = localFont({
-  src: '../../public/fonts/InterDisplay-Regular.ttf',
+  src: '../../../public/fonts/InterDisplay-Regular.ttf',
   display: 'swap',
   variable: '--font-inter-display',
 })

@@ -7,7 +7,7 @@ export const Catagories = () => {
 
     return (
         <div className="w-[20%] flex md:flex-col gap-4">
-            {catagories.map((category, index) => (
+            {catagories.map(category => (
                 <Catagory key={category} category={category} />
             ))}
         </div>
