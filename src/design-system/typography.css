@@ -1,0 +1,136 @@
+:root {
+        --heading-1: 128px;
+        --heading-2: 48px;
+        --body-low: 20px;
+        --body-normal: 20px;
+        --description: 32px;
+        --nav-link: 18px;
+        --nav-s: 14px;
+
+        --heading-1-letter-spacing: -0.02em;
+        --heading-2-letter-spacing: -0.02em;
+        --body-low-letter-spacing: -0.02em;
+        --body-normal-letter-spacing: -0.02em;
+        --description-letter-spacing: -0.04em;
+        --nav-link-letter-spacing: -0.02em;
+        --nav-s-letter-spacing: -0.02em;
+
+        --heading-1-line-height: 0.9em;
+        --heading-2-line-height: 1.1em;
+        --body-low-line-height: 1.2em;
+        --body-normal-line-height: 1.2em;
+        --description-line-height: 1em;
+        --nav-link-line-height: 1.4em;
+        --nav-s-line-height: 1.4em;
+
+        --heading-font-family: Blackhood, sans-serif;
+        --body-font-family: "Inter Display", sans-serif;
+}
+
+h1 {
+        font-family: var(--heading-font-family);
+        color: var(--primary);
+        font-size: var(--heading-1);
+        letter-spacing: var(--heading-1-letter-spacing);
+        line-height: var(--heading-1-line-height);
+        text-transform: lowercase;
+}
+
+h2 {
+        font-family: var(--heading-font-family);
+        color: var(--primary);
+        font-size: var(--heading-2);
+        letter-spacing: var(--heading-2-letter-spacing);
+        line-height: var(--heading-2-line-height);
+        text-transform: lowercase;
+}
+
+p {
+        font-family: var(--body-font-family);
+        color: var(--black);
+        font-size: var(--body-normal);
+        letter-spacing: var(--body-normal-letter-spacing);
+        line-height: var(--body-normal-line-height);
+}
+
+.heading {
+        font-family: var(--heading-font-family);
+        color: var(--primary);
+        font-size: var(--heading-1);
+        letter-spacing: var(--heading-1-letter-spacing);
+        line-height: var(--heading-1-line-height);
+        text-transform: lowercase;
+}
+
+.heading-2 {
+        font-family: var(--heading-font-family);
+        color: var(--primary);
+        font-size: var(--heading-2);
+        letter-spacing: var(--heading-2-letter-spacing);
+        line-height: var(--heading-2-line-height);
+        text-transform: lowercase;
+}
+
+.nav-link {
+        font-family: var(--font-dm-mono);
+        color: var(--white);
+        font-size: var(--nav-link);
+        letter-spacing: var(--nav-link-letter-spacing);
+        line-height: var(--nav-link-line-height);
+        text-transform: uppercase;
+}
+
+.nav-s {
+        font-family: var(--font-dm-mono);
+        color: var(--white);
+        font-size: var(--nav-s);
+        letter-spacing: var(--nav-s-letter-spacing);
+        line-height: var(--nav-s-line-height);
+        text-transform: uppercase;
+}
+
+.nav-s-decor {
+        color: var(--white);
+        text-decoration: line-through;
+}
+
+.nav-l-decor {
+        color: var(--primary);
+        text-decoration: line-through;
+}
+
+.description {
+        font-family: var(--body-font-family);
+        color: var(--black);
+        font-size: var(--description);
+        letter-spacing: var(--description-letter-spacing);
+        line-height: var(--description-line-height);
+        text-transform: lowercase;
+}
+
+.body-low {
+        font-family: var(--body-font-family);
+        color: var(--primary);
+        font-size: var(--body-low);
+        letter-spacing: var(--body-low-letter-spacing);
+        line-height: var(--body-low-line-height);
+        text-transform: lowercase;
+}
+
+.body-normal {
+        font-family: var(--body-font-family);
+        color: #666;
+        font-size: var(--body-normal);
+        letter-spacing: var(--body-normal-letter-spacing);
+        line-height: var(--body-normal-line-height);
+        text-transform: lowercase;
+}
+
+.black-link {
+        color: black;
+        text-decoration-line: underline;
+        text-decoration-style: dashed;
+        text-decoration-color: bkack;
+        text-decoration-thickness: auto;
+        text-underline-offset: 3px;
+}

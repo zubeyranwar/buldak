@@ -1,0 +1,11 @@
+:root {
+  --primary: #E55441;
+  --secondary: #FFE4A1;
+
+  --black: #313133;
+  --black-80: rgba(18, 18, 18, 0.8);
+
+  --gray: #808080;
+  --background: #F5F4F2;
+  --white: #EEE9E3;
+}
