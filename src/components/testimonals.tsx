@@ -75,7 +75,7 @@ const TESTIMONALS = [
 
 export const Testimonals = () => {
     return (
-        <section className="mt-20 flex min-h-screen flex-col gap-8 overflow-hidden py-8">
+        <section className="mt-20 flex flex-col gap-8 overflow-hidden">
             <div className="w-full max-w-400 mx-auto">
 
                 <div className="flex items-end justify-between gap-6">
@@ -90,7 +90,7 @@ export const Testimonals = () => {
             </div>
             <Swiper
                 modules={[Pagination]}
-                spaceBetween={14}
+                spaceBetween={10}
                 slidesPerView="auto"
                 grabCursor
                 pagination={{ clickable: true }}

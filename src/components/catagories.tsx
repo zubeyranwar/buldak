@@ -27,7 +27,7 @@ const catagoryVariants = {
             stiffness: 400,
             damping: 58,
             mass: 1,
-            delay: 0.5
+            // delay: 0.1
             // delay: i * 0.08,
         },
     },

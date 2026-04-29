@@ -52,7 +52,7 @@ export const MenuItem = ({ index }: { index: number }) => {
                 animate="rest"
                 className="relative group flex flex-col gap-1 cursor-pointer">
                 <div
-                    className="bg-[#EEE9E3] group-hover:bg-primary/10"
+                    className="bg-[#EEE9E3] group-hover:bg-primary/10 flex items-center justify-center"
                 >
                     <Image
                         src="/menu/ramen.png"

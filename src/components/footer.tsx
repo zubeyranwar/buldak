@@ -6,7 +6,7 @@ import Link from "next/link"
 export const Footer = () => {
     return (
         <Container>
-            <footer className="flex flex-col gap-25 pb-12">
+            <footer className="flex flex-col gap-25 pt-37.5 pb-12">
                 <div className="grid grid-cols-4 items-center">
                     <div />
                     <div className="col-span-2 flex items-center gap-2">

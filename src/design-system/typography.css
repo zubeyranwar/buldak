@@ -134,3 +134,18 @@ p {
         text-decoration-thickness: auto;
         text-underline-offset: 3px;
 }
+
+.orange-link {
+        color: var(--primary);
+        text-decoration-line: underline;
+        text-decoration-style: dotted;
+        text-decoration-color: var(--primary);
+        text-decoration-thickness: 3px;
+        text-underline-offset: 3px;
+        transition: cubic-bezier(0.12, 0.23, 0.5, 1) 0.3s;
+}
+
+.orange-link:hover {
+        color: var(--gray);
+        text-decoration-color: var(--gray);
+}

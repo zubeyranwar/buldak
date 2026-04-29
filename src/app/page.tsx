@@ -9,12 +9,10 @@ export default function Home() {
   return (
     <main>
       <Container>
-        <Navbar />
         <Hero />
         <Menu />
       </Container>
       <Testimonals />
-      <Footer />
     </main>
   );
 }
