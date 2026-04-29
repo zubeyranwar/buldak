@@ -13,4 +13,5 @@ export type MenuCard = {
     oldPrice?: number | null
     label: string
     imageUrl?: string | null
+    slug: string
 }

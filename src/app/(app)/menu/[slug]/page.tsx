@@ -1,38 +1,135 @@
+import configPromise from "@payload-config";
 import { Container } from "@/components/container";
 import { MenuItem } from "@/components/menu-item";
+import type { MenuCard } from "@/components/menu-types";
 import { Button } from "@/components/ui/button";
+import { getPayload } from "payload";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
-const tag = [
-    {
-        title: "Price",
-        price: "$16.99",
-        oldPrice: "$18.99",
-        saleVisible: true
-    },
-    {
-        title: "Volume",
-        value: "400ml",
-        saleVisible: false
-    },
-    {
-        title: "Kcal",
-        value: "400ml",
-        saleVisible: false
-    },
-    {
-        title: "Kcal",
-        value: "400ml",
-        saleVisible: false
-    },
-    {
-        title: "Kcal",
-        value: "400ml",
-        saleVisible: false
+type CatagoryDoc = {
+    id: string;
+    name: string;
+};
+
+type MenuDoc = {
+    id: string;
+    title: string;
+    description?: string | null;
+    price: number;
+    oldPrice?: number | null;
+    volume?: string | null;
+    kcal?: number | null;
+    label?: string | null;
+    catagory: string | CatagoryDoc;
+    image: string | { url?: string | null };
+    slug: string;
+};
+
+type PageProps = {
+    params: Promise<{
+        slug: string;
+    }>;
+};
+
+const toMenuCard = (doc: MenuDoc): MenuCard => {
+    const catagory = typeof doc.catagory === "object" && doc.catagory ? doc.catagory : null;
+    const image = typeof doc.image === "object" && doc.image ? doc.image : null;
+
+    return {
+        id: doc.id,
+        title: doc.title,
+        description: doc.description ?? "",
+        categoryName: catagory?.name ?? "Uncategorized",
+        price: doc.price,
+        oldPrice: doc.oldPrice,
+        label: doc.label ?? "Menu",
+        imageUrl: image?.url ?? null,
+        slug: doc.slug,
+    };
+};
+
+export default async function MenuItemDetail({ params }: PageProps) {
+    const { slug } = await params;
+
+    const payload = await getPayload({
+        config: configPromise,
+    });
+
+    const menuResult = await payload.find({
+        collection: "menu" as never,
+        where: {
+            slug: {
+                equals: slug,
+            },
+        },
+        limit: 1,
+        depth: 1,
+    });
+
+    const currentDoc = (menuResult.docs[0] as MenuDoc | undefined) ?? null;
+
+    if (!currentDoc) {
+        notFound();
     }
-]
-export default function MenuItemDetail() {
+
+    const catagoryId =
+        typeof currentDoc.catagory === "object" && currentDoc.catagory
+            ? currentDoc.catagory.id
+            : currentDoc.catagory;
+
+    const relatedResult = await payload.find({
+        collection: "menu" as never,
+        where: {
+            and: [
+                {
+                    catagory: {
+                        equals: catagoryId,
+                    },
+                },
+                {
+                    id: {
+                        not_equals: currentDoc.id,
+                    },
+                },
+            ],
+        },
+        limit: 3,
+        depth: 1,
+        sort: "-date",
+    });
+
+    const relatedItems = (relatedResult.docs as MenuDoc[]).map(toMenuCard);
+    const currentItem = toMenuCard(currentDoc);
+
+    const tagItems = [
+        {
+            id: "price",
+            saleVisible: currentDoc.oldPrice != null && currentDoc.oldPrice > currentDoc.price,
+            oldPrice: currentDoc.oldPrice != null ? `$${currentDoc.oldPrice.toFixed(2)}` : undefined,
+            price: `$${currentDoc.price.toFixed(2)}`,
+            value: undefined as string | undefined,
+        },
+        {
+            id: "volume",
+            saleVisible: false,
+            value: currentDoc.volume ?? undefined,
+        },
+        {
+            id: "kcal",
+            saleVisible: false,
+            value: currentDoc.kcal != null ? `${currentDoc.kcal} kcal` : undefined,
+        },
+        {
+            id: "label",
+            saleVisible: false,
+            value: currentDoc.label ?? undefined,
+        },
+    ].filter((item) => item.saleVisible || item.value);
+
+    const relatedPreview = relatedItems[0] ?? null;
+
     return (
         <Container>
             <main className="flex flex-col gap-2 pt-17.5">
@@ -40,10 +137,10 @@ export default function MenuItemDetail() {
                     <div className="grid grid-cols-4">
                         <div />
                         <div className="flex flex-col gap-5 col-span-2">
-                            <Button className="w-fit text-white">Bowls</Button>
+                            <Button className="w-fit text-white">{currentItem.categoryName}</Button>
                             <div className="flex flex-col gap-7.5">
-                                <h1 className="font-sans!">Menu Item Name</h1>
-                                <p className="body-low">Description.</p>
+                                <h1 className="font-sans!">{currentItem.title}</h1>
+                                <p className="body-low">{currentItem.description}</p>
                             </div>
                         </div>
                         <div />
@@ -51,40 +148,38 @@ export default function MenuItemDetail() {
                     <div className="grid grid-cols-4">
                         <div />
                         <div className="flex flex-col gap-7.5 col-span-2">
-                            <div
-                                className="bg-[#EEE9E3] group-hover:bg-primary/10 flex items-center justify-center"
-                            >
+                            <div className="bg-[#EEE9E3] group-hover:bg-primary/10 flex items-center justify-center">
                                 <Image
-                                    src="/menu/ramen.png"
-                                    alt="Ramen"
+                                    src={currentItem.imageUrl || "/menu/ramen.png"}
+                                    alt={currentItem.title}
                                     width={500}
                                     height={500}
                                 />
                             </div>
-                            <p className="body-low">A crisp green juice packed with vitamins and minerals.</p>
-                            <div className="flex justify-between">
-                                <div></div>
-                                <div />
-                                <div className="flex flex-col items-end">
-                                    <p className="body-low orange-link">tropical paradise bowl</p>
-                                    <Image
-                                        src="/menu/ramen.png"
-                                        alt="Ramen"
-                                        width={50}
-                                        height={50}
-                                    />
+                            <p className="body-low">{currentItem.description}</p>
+                            {relatedPreview && (
+                                <div className="flex justify-between">
+                                    <div></div>
+                                    <div />
+                                    <div className="flex flex-col items-end">
+                                        <p className="body-low orange-link">{relatedPreview.title.toLowerCase()}</p>
+                                        <Image
+                                            src={relatedPreview.imageUrl || "/menu/ramen.png"}
+                                            alt={relatedPreview.title}
+                                            width={50}
+                                            height={50}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                         <div className="ml-10">
                             <div className="pt-2.5 flex flex-wrap gap-2">
-                                {
-                                    tag.map((item, index) => (
-                                        <div key={index} className="flex flex-col gap-2">
-                                            <Tag value={item} saleVisible={item.saleVisible} />
-                                        </div>
-                                    ))
-                                }
+                                {tagItems.map((item) => (
+                                    <div key={item.id} className="flex flex-col gap-2">
+                                        <Tag value={item} saleVisible={item.saleVisible} />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -93,22 +188,32 @@ export default function MenuItemDetail() {
                     <div />
                     <div className="col-span-3 flex flex-col gap-7.5">
                         <div className="flex items-center justify-between">
-                            <h2 className="font-sans!">other bowls</h2>
+                            <h2 className="font-sans!">other {currentItem.categoryName.toLowerCase()}</h2>
                             <Link href="/menu" className="nav-link text-primary!">All menu</Link>
                         </div>
                         <div className="grid grid-cols-3 gap-7.5">
-                            {Array.from({ length: 2 }).map((_, index) => (
-                                <MenuItem key={index} index={index} />
+                            {relatedItems.map((item, index) => (
+                                <MenuItem key={item.id} index={index} item={item} itemCount={relatedItems.length} />
                             ))}
                         </div>
                     </div>
                 </section>
             </main>
         </Container>
-    )
+    );
 }
 
-const Tag = ({ value, saleVisible }: { value: any, saleVisible: boolean }) => {
+const Tag = ({
+    value,
+    saleVisible,
+}: {
+    value: {
+        oldPrice?: string;
+        price?: string;
+        value?: string;
+    };
+    saleVisible: boolean;
+}) => {
     return (
         <p className="w-fit flex gap-2 border border-primary rounded-[5px] nav-link text-primary! px-2 py-1">
             {saleVisible && (
@@ -119,5 +224,5 @@ const Tag = ({ value, saleVisible }: { value: any, saleVisible: boolean }) => {
             )}
             <span>{value.value}</span>
         </p>
-    )
-}
+    );
+};
