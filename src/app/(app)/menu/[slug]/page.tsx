@@ -1,6 +1,5 @@
 import { Container } from "@/components/container";
 import { MenuItem } from "@/components/menu-item";
-import { MENU_ITEM_COUNT } from "@/components/menu-items";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
