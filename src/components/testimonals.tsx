@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { Container } from "./container";
+import { Logo } from "./logo";
 
 const TESTIMONALS = [
     {
@@ -75,9 +77,8 @@ const TESTIMONALS = [
 
 export const Testimonals = () => {
     return (
-        <section className="mt-20 flex flex-col gap-8 overflow-hidden">
-            <div className="w-full max-w-400 mx-auto">
-
+        <section className="mt-20 flex flex-col gap-12 overflow-hidden">
+            <Container>
                 <div className="flex items-end justify-between gap-6">
                     <div className="max-w-2xl space-y-3">
                         <h2 className="font-sans!">Words of affirmation</h2>
@@ -86,18 +87,34 @@ export const Testimonals = () => {
                         </p>
                     </div>
                 </div>
-
-            </div>
+            </Container>
             <Swiper
+                slidesPerView={1}
+                spaceBetween={20}
+                centeredSlides={true}
+                initialSlide={Math.floor(TESTIMONALS.length / 2) - 2}
+                breakpoints={{
+                    640: {
+                        slidesPerView: 2,
+                        spaceBetween: 20,
+                    },
+                    1024: {
+                        slidesPerView: 3,
+                        spaceBetween: 30,
+                    },
+                    1280: {
+                        slidesPerView: 4,
+                        spaceBetween: 30,
+                    },
+                }}
+                pagination={{
+                    clickable: true,
+                }}
                 modules={[Pagination]}
-                spaceBetween={10}
-                slidesPerView="auto"
-                grabCursor
-                pagination={{ clickable: true }}
                 className="w-full overflow-visible! pb-12 pl-4 sm:pl-6"
             >
                 {TESTIMONALS.map((testimonal, index) => (
-                    <SwiperSlide key={`${testimonal.name}-${index}`} className="h-auto! w-64! md:w-72!">
+                    <SwiperSlide key={`${testimonal.name}-${index}`} className="h-auto! w-[60%]! sm:w-[50%]! lg:w-[16%]!">
                         <TestimonalCard {...testimonal} />
                     </SwiperSlide>
                 ))}
@@ -123,12 +140,10 @@ const TestimonalCard = ({ name, used, quote, posterSrc, videoSrc }: TestimonalCa
                     alt={`${name} poster`}
                     width={640}
                     height={800}
-                    className="aspect-3/5 w-full object-cover"
+                    className="aspect-3/5 w-full object-contain"
                 />
                 <span className="pointer-events-none absolute inset-0 grid place-items-center">
-                    <span className="size-10 rounded-full bg-black/20 text-white grid place-items-center text-sm">
-                        ▶
-                    </span>
+                    <Logo.play className="bg-white rounded-full px-1 size-10" />
                 </span>
             </Link>
 
@@ -137,7 +152,7 @@ const TestimonalCard = ({ name, used, quote, posterSrc, videoSrc }: TestimonalCa
                     "{quote.trim()}"
                 </p>
 
-                <div className="w-full font-dm-mono nav-s flex items-center gap-y-1 text-black! uppercase">
+                {/* <div className="w-full font-dm-mono nav-s flex items-center gap-y-1 text-black! uppercase">
                     <span>{name}</span>
                     <span className="text-black-80!">used</span>
                     <div className="ml-3 flex flex-col">
@@ -151,7 +166,7 @@ const TestimonalCard = ({ name, used, quote, posterSrc, videoSrc }: TestimonalCa
                             </Link>
                         ))}
                     </div>
-                </div>
+                </div> */}
             </div>
         </article>
     );

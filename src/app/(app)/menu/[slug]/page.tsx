@@ -150,7 +150,7 @@ export default async function MenuItemDetail({ params }: PageProps) {
                         <div className="flex flex-col gap-7.5 col-span-2">
                             <div className="bg-[#EEE9E3] group-hover:bg-primary/10 flex items-center justify-center">
                                 <Image
-                                    src={currentItem.imageUrl || "/menu/ramen.png"}
+                                    src={currentItem.imageUrl as string}
                                     alt={currentItem.title}
                                     width={500}
                                     height={500}
@@ -161,15 +161,15 @@ export default async function MenuItemDetail({ params }: PageProps) {
                                 <div className="flex justify-between">
                                     <div></div>
                                     <div />
-                                    <div className="flex flex-col items-end">
+                                    <Link href={relatedPreview.slug} className="flex flex-col items-end">
                                         <p className="body-low orange-link">{relatedPreview.title.toLowerCase()}</p>
                                         <Image
-                                            src={relatedPreview.imageUrl || "/menu/ramen.png"}
+                                            src={relatedPreview.imageUrl as string}
                                             alt={relatedPreview.title}
                                             width={50}
                                             height={50}
                                         />
-                                    </div>
+                                    </Link>
                                 </div>
                             )}
                         </div>

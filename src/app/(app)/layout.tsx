@@ -40,13 +40,10 @@ export default function RootLayout({
       className={`${interDisplay.variable} ${blackhood.variable} ${dmMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Container>
-          <Navbar />
-        </Container>
-        {children}</body>
-      <Container>
+        <Navbar />
+        {children}
         <Footer />
-      </Container>
+      </body>
     </html>
   );
 }

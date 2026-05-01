@@ -83,3 +83,9 @@ body {
 .border {
   border: 1px solid red;
 }
+
+@layer components {
+  .spacer {
+    @apply hidden md:block h-8;
+  }
+}
