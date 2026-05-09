@@ -17,6 +17,7 @@ interface LayerInViewAnimProps {
     duration?: number;
     delay?: number;
     bounce?: number;
+    once?: boolean;
     children: React.ReactNode;
     className?: string;
 }
@@ -29,6 +30,7 @@ export const LayerInViewAnim = ({
     duration = 1.5,
     delay = 0.4,
     bounce = 0.2,
+    once = true,
     children,
     className,
 }: LayerInViewAnimProps) => {
@@ -62,7 +64,7 @@ export const LayerInViewAnim = ({
             variants={variants}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, amount: 0.5 }}
+            viewport={{ once, amount: 0.5 }}
             className={className}
         >
             {children}

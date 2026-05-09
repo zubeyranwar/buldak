@@ -10,7 +10,7 @@ export const Footer = () => {
             <Container>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 md:gap-0">
                     <div className="spacer" />
-                    <div className="md:col-span-2 flex flex-col md:flex-row items-center gap-2">
+                    <LayerInViewAnim delay={0} className="md:col-span-2 flex flex-col md:flex-row items-center gap-2">
                         <Image
                             src="/logo.png"
                             alt="Logo"
@@ -18,10 +18,12 @@ export const Footer = () => {
                             height={202}
                         />
                         <p className="heading md:heading">Buldak</p>
-                    </div>
-                    <p className="body-low md:text-center">
-                        Cold-pressed juices, smoothies & bowls
-                    </p>
+                    </LayerInViewAnim>
+                    <LayerInViewAnim delay={0.2}>
+                        <p className="body-low md:text-center">
+                            Cold-pressed juices, smoothies & bowls
+                        </p>
+                    </LayerInViewAnim>
                 </div>
                 <div className="mt-6 md:mt-0 grid grid-cols-1 md:grid-cols-4 gap-y-4 md:gap-0">
                     <div className="spacer" />

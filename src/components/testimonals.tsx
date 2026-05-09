@@ -1,174 +1,50 @@
-"use client";
+import configPromise from "@payload-config";
+import { getPayload } from "payload";
 
-import { sluggish } from "@/lib/utils";
-import Image from "next/image";
-import Link from "next/link";
-import { Pagination } from "swiper/modules";
-import { Swiper, SwiperSlide } from "swiper/react";
 import { Container } from "./container";
-import { Logo } from "./logo";
+import { TestimonalSwiper } from "./testimonal-card";
+import { LayerInViewAnim } from "./layer-in-view-anim";
 
-const TESTIMONALS = [
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
-    {
-        name: "Bitaniya Solomon",
-        used: ["Chicken kampong", "Cold ramen ", "Beef kimbap"],
-        quote: "Delicious! I loved it, Specially Chicken kampong, it was so good! ",
-        posterSrc: "https://res.cloudinary.com/du5mob6ny/image/upload/v1777418598/Screenshot_from_2026-04-29_02-16-19_iufhhw.png",
-        videoSrc: "https://www.instagram.com/p/DXcQd63DKK3/"
-    },
+export type TestimonalDoc = {
+    id: string;
+    quote: string;
+    coverImage: {
+        url: string;
+    };
+    videoUrl: string;
+}
 
-]
+export const Testimonals = async () => {
+    const payload = await getPayload({
+        config: configPromise,
+    });
 
-export const Testimonals = () => {
+    const testimonalsDocs = await payload.find({
+        collection: "testimonal" as never,
+        limit: 100,
+        depth: 1,
+        sort: "-createdAt",
+    });
+
+    const testimonals = testimonalsDocs.docs as TestimonalDoc[];
+
     return (
         <section className="mt-20 flex flex-col gap-12 overflow-hidden">
             <Container>
                 <div className="flex items-end justify-between gap-6">
                     <div className="max-w-2xl space-y-3">
-                        <h2 className="font-sans!">Words of affirmation</h2>
-                        <p className="body-low max-w-xl!">
-                            Real reactions from guests who stopped by for ramen, drinks, and everything spicy in between.
-                        </p>
+                        <LayerInViewAnim>
+                            <h2 className="font-sans!">Words of affirmation</h2>
+                        </LayerInViewAnim>
+                        <LayerInViewAnim>
+                            <p className="body-low max-w-xl!">
+                                Real reactions from guests who stopped by for ramen, drinks, and everything spicy in between.
+                            </p>
+                        </LayerInViewAnim>
                     </div>
                 </div>
             </Container>
-            <Swiper
-                slidesPerView={1}
-                spaceBetween={20}
-                centeredSlides={true}
-                initialSlide={Math.floor(TESTIMONALS.length / 2) - 2}
-                breakpoints={{
-                    640: {
-                        slidesPerView: 2,
-                        spaceBetween: 20,
-                    },
-                    1024: {
-                        slidesPerView: 3,
-                        spaceBetween: 30,
-                    },
-                    1280: {
-                        slidesPerView: 4,
-                        spaceBetween: 30,
-                    },
-                }}
-                pagination={{
-                    clickable: true,
-                }}
-                modules={[Pagination]}
-                className="w-full overflow-visible! pb-12 pl-4 sm:pl-6"
-            >
-                {TESTIMONALS.map((testimonal, index) => (
-                    <SwiperSlide key={`${testimonal.name}-${index}`} className="h-auto! w-[60%]! sm:w-[50%]! lg:w-[16%]!">
-                        <TestimonalCard {...testimonal} />
-                    </SwiperSlide>
-                ))}
-            </Swiper>
+            <TestimonalSwiper testimonals={Array.from({ length: 10 }, () => testimonals).flat()} />
         </section>
     )
 }
-
-interface TestimonalCardProps {
-    name: string;
-    used?: string[];
-    quote: string;
-    posterSrc: string;
-    videoSrc: string;
-}
-
-const TestimonalCard = ({ name, used, quote, posterSrc, videoSrc }: TestimonalCardProps) => {
-    return (
-        <article className="flex h-full flex-col gap-2.5">
-            <Link href={videoSrc} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded-[20px] border-black">
-                <Image
-                    src={posterSrc}
-                    alt={`${name} poster`}
-                    width={640}
-                    height={800}
-                    className="aspect-3/5 w-full object-contain"
-                />
-                <span className="pointer-events-none absolute inset-0 grid place-items-center">
-                    <Logo.play className="bg-white rounded-full px-1 size-10" />
-                </span>
-            </Link>
-
-            <div className="space-y-1 px-1">
-                <p className="font-dm-mono nav-s normal-case! text-black! leading-[1.3]! line-clamp-2">
-                    "{quote.trim()}"
-                </p>
-
-                {/* <div className="w-full font-dm-mono nav-s flex items-center gap-y-1 text-black! uppercase">
-                    <span>{name}</span>
-                    <span className="text-black-80!">used</span>
-                    <div className="ml-3 flex flex-col">
-                        {used?.map((item, index) => (
-                            <Link
-                                href={`/menu/${sluggish(item.trim())}`}
-                                key={index}
-                                className="text-primary!"
-                            >
-                                {item.trim()}{index < used.length - 1 ? "," : ""}
-                            </Link>
-                        ))}
-                    </div>
-                </div> */}
-            </div>
-        </article>
-    );
-};
-

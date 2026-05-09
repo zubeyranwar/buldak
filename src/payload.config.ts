@@ -10,6 +10,7 @@ import { Media } from "./collections/Media";
 import { Catagory } from "./collections/Catagory";
 import { Menu } from "./collections/Menu";
 import { Testimonal } from "./collections/Testimonal";
+import { Table } from "./collections/Table";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -21,7 +22,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Catagory, Menu, Testimonal],
+  collections: [Users, Media, Catagory, Menu, Testimonal, Table],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

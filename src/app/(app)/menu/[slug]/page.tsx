@@ -7,6 +7,7 @@ import { getPayload } from "payload";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LayerInViewAnim } from "@/components/layer-in-view-anim";
 
 type CatagoryDoc = {
     id: string;
@@ -135,32 +136,42 @@ export default async function MenuItemDetail({ params }: PageProps) {
             <main className="flex flex-col gap-2 pt-17.5">
                 <section>
                     <div className="grid grid-cols-4">
-                        <div />
+                        <div className="spacer" />
                         <div className="flex flex-col gap-5 col-span-2">
-                            <Button className="w-fit text-white">{currentItem.categoryName}</Button>
+                            <LayerInViewAnim>
+                                <Button className="w-fit text-white">{currentItem.categoryName}</Button>
+                            </LayerInViewAnim>
                             <div className="flex flex-col gap-7.5">
-                                <h1 className="font-sans!">{currentItem.title}</h1>
-                                <p className="body-low">{currentItem.description}</p>
+                                <LayerInViewAnim>
+                                    <h1 className="font-sans! text-heading-2! md:text-heading-1">{currentItem.title}</h1>
+                                </LayerInViewAnim>
+                                <LayerInViewAnim>
+                                    <p className="body-low">{currentItem.description}</p>
+                                </LayerInViewAnim>
                             </div>
                         </div>
-                        <div />
+                        <div className="spacer" />
                     </div>
-                    <div className="grid grid-cols-4">
-                        <div />
+                    <div className="grid grid-cols-1 md:grid-cols-4">
+                        <div className="spacer" />
                         <div className="flex flex-col gap-7.5 col-span-2">
-                            <div className="bg-[#EEE9E3] group-hover:bg-primary/10 flex items-center justify-center">
-                                <Image
-                                    src={currentItem.imageUrl as string}
-                                    alt={currentItem.title}
-                                    width={500}
-                                    height={500}
-                                />
-                            </div>
-                            <p className="body-low">{currentItem.description}</p>
+                            <LayerInViewAnim>
+                                <div className="bg-white group-hover:bg-primary/10 flex items-center justify-center">
+                                    <Image
+                                        src={currentItem.imageUrl as string}
+                                        alt={currentItem.title}
+                                        width={500}
+                                        height={500}
+                                    />
+                                </div>
+                            </LayerInViewAnim>
+                            <LayerInViewAnim>
+                                <p className="body-low">{currentItem.description}</p>
+                            </LayerInViewAnim>
                             {relatedPreview && (
                                 <div className="flex justify-between">
-                                    <div></div>
                                     <div />
+                                    <div className="spacer" />
                                     <Link href={relatedPreview.slug} className="flex flex-col items-end">
                                         <p className="body-low orange-link">{relatedPreview.title.toLowerCase()}</p>
                                         <Image
@@ -173,7 +184,7 @@ export default async function MenuItemDetail({ params }: PageProps) {
                                 </div>
                             )}
                         </div>
-                        <div className="ml-10">
+                        <div className="ml-0 md:ml-10">
                             <div className="pt-2.5 flex flex-wrap gap-2">
                                 {tagItems.map((item) => (
                                     <div key={item.id} className="flex flex-col gap-2">
@@ -184,14 +195,14 @@ export default async function MenuItemDetail({ params }: PageProps) {
                         </div>
                     </div>
                 </section>
-                <section className="grid grid-cols-4">
-                    <div />
+                <section className="grid grid-cols-1 md:grid-cols-4 mt-4 md:mt-0">
+                    <div className="spacer" />
                     <div className="col-span-3 flex flex-col gap-7.5">
                         <div className="flex items-center justify-between">
                             <h2 className="font-sans!">other {currentItem.categoryName.toLowerCase()}</h2>
-                            <Link href="/menu" className="nav-link text-primary!">All menu</Link>
+                            <Link href="/menu" className="nav-link text-primary! whitespace-nowrap">All menu</Link>
                         </div>
-                        <div className="grid grid-cols-3 gap-7.5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-7.5">
                             {relatedItems.map((item, index) => (
                                 <MenuItem key={item.id} index={index} item={item} itemCount={relatedItems.length} />
                             ))}

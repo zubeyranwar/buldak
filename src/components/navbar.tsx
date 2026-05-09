@@ -16,7 +16,7 @@ export const Navbar = () => {
             <Container>
                 <div className="mt-2 flex justify-between items-center">
                     <LayerInViewAnim className="hidden sm:block" based="physics" offsetY={18} scale={0.85} delay={0}>
-                        <Link href="/menu" className="nav-link text-primary!">Menu <span className="-ml-1 text-[12px]">{17}</span></Link>
+                        <Link href="/menu" className="nav-link text-primary!">Menu {/*<span className="-ml-1 text-[12px]">{17}</span>*/}</Link>
                     </LayerInViewAnim>
                     <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0}>
                         <Link href="/" className="flex gap-2 items-center">
@@ -35,7 +35,7 @@ export const Navbar = () => {
                             <Logo.instagram />
                         </LayerInViewAnim>
                         <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0.4}>
-                            <Button className="text-white">Reserve Table ➜</Button>
+                            <Link href="/reserve-table"><Button className="text-white">Reserve Table ➜</Button></Link>
                         </LayerInViewAnim>
                     </div>
                     <div
@@ -46,10 +46,10 @@ export const Navbar = () => {
                         </div>
                     </div>
 
-                    <div className={`${open ? "block" : "hidden"} absolute top-40 left-0 inset-0 bg-background h-screen z-9999`}>
+                    <div className={`${open ? "block" : "hidden"} absolute top-24 left-0 inset-0 bg-background h-screen z-9999`}>
                         <div className="w-full flex flex-col items-center gap-30">
                             <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0}>
-                                <Link href="/menu" className="nav-link text-primary!">Menu <span className="-ml-1 text-[12px]">{17}</span></Link>
+                                <Link href="/menu" className="nav-link text-primary!">Menu {/*<span className="-ml-1 text-[12px]">{17}</span>*/}</Link>
                             </LayerInViewAnim>
                             <div className="flex flex-col items-center gap-6">
                                 <LayerInViewAnim className="flex gap-2" based="physics" offsetY={18} scale={0.85} delay={0.5}>
@@ -57,7 +57,7 @@ export const Navbar = () => {
                                     <Logo.instagram />
                                 </LayerInViewAnim>
                                 <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0.4}>
-                                    <Button className="text-white">Reserve Table ➜</Button>
+                                    <Link href="/reserve-table"><Button className="text-white">Reserve Table ➜</Button></Link>
                                 </LayerInViewAnim>
                             </div>
                             <div className="space-y-2 text-center">
