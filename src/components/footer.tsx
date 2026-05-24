@@ -58,11 +58,11 @@ export const Footer = () => {
                             </LayerInViewAnim>
 
                         </div>
-                        <Link href="/menu" className="nav-link text-primary!">Menu <span className="-ml-1 text-[12px]">{17}</span></Link>
+                        <LayerInViewAnim scale={0.85} offsetY={18} based="physics"><Link href="/menu" className="nav-link text-primary!">Menu <span className="-ml-1 text-[12px]">{17}</span></Link> </LayerInViewAnim>
                     </div>
                 </div>
                 <p className="body-normal text-gray! mt-4 md:mt-0">© 2026 Buldak </p>
             </Container>
-        </footer>
+        </footer >
     )
 }

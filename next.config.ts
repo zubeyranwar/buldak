@@ -1,5 +1,4 @@
 import { withPayload } from "@payloadcms/next/withPayload";
-import { withPayload } from "@payloadcms/next/withPayload";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -8,6 +7,7 @@ const nextConfig: NextConfig = {
   images: {
     domains: ["res.cloudinary.com"],
   },
+  allowedDevOrigins: ['10.127.155.122'],
 };
 
 export default withPayload(withPayload(nextConfig));

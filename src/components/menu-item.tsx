@@ -69,6 +69,7 @@ export const MenuItem = ({ index, item, itemCount }: { index: number, item: Menu
                             alt={item.title}
                             width={300}
                             height={200}
+                            className="aspect-4/5"
                         />
                     </div>
                     <div className="flex flex-col gap-2">

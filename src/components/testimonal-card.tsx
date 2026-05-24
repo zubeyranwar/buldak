@@ -6,6 +6,7 @@ import { TestimonalDoc } from "./testimonals";
 import { Logo } from "./logo";
 import { Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { LayerInViewAnim } from "./layer-in-view-anim";
 
 interface TestimonalCardProps extends Omit<TestimonalDoc, "id"> { }
 
@@ -34,11 +35,13 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
                 clickable: true,
             }}
             modules={[Pagination]}
-            className="w-full overflow-visible! pb-12 pl-4 sm:pl-6"
+            className="w-full overflow-visible! pb-12 pl-4 sm:pl-6 mt-0!"
         >
             {testimonals.map(testimonal => (
                 <SwiperSlide key={testimonal.id} className="h-auto! w-[60%]! sm:w-[50%]! lg:w-[16%]!">
-                    <TestimonalCard {...testimonal} />
+                    <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0}>
+                        <TestimonalCard {...testimonal} />
+                    </LayerInViewAnim>
                 </SwiperSlide>
             ))}
         </Swiper>

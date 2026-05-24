@@ -47,12 +47,12 @@
   --text-nav-s--letter-spacing: var(--nav-s-letter-spacing);
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   :root {
     --background: var(--black);
     --foreground: var(--white);
   }
-}
+} */
 
 body {
   background: var(--background);

@@ -24,7 +24,7 @@ const heroHeadingTextVariants = {
     }),
 } as const;
 
-const heroTextLines = ["Fresh, daily,", "mindful"];
+const heroTextLines = ["Your,Korean", " Comfort Corner"];
 
 const heroCharacters = heroTextLines.flatMap((line, lineIndex) =>
     line.split("").map((char, charIndex) => ({

@@ -1,0 +1,12 @@
+[
+    {
+        "key": "use-current-location",
+        "EN_US": "Use Your Current Location",
+        "AM": "ያሉበትን አካባቢ ይጠቀሙ"
+    },
+    {
+        "key": "use-current-location-desc",
+        "EN_US": "Your packages will be sent to this location for door to door delivery.",
+        "AM": "ከቤት ወደ ቤት ለማድረስ ፓኬጆችዎ ወደዚህ ቦታ ይላካሉ"
+    }
+]

@@ -29,17 +29,17 @@ export const Testimonals = async () => {
     const testimonals = testimonalsDocs.docs as TestimonalDoc[];
 
     return (
-        <section className="mt-20 flex flex-col gap-12 overflow-hidden">
+        <section className="mt-32 flex flex-col gap-12 overflow-hidden">
             <Container>
                 <div className="flex items-end justify-between gap-6">
                     <div className="max-w-2xl space-y-3">
                         <LayerInViewAnim>
-                            <h2 className="font-sans!">Words of affirmation</h2>
-                        </LayerInViewAnim>
-                        <LayerInViewAnim>
-                            <p className="body-low max-w-xl!">
-                                Real reactions from guests who stopped by for ramen, drinks, and everything spicy in between.
-                            </p>
+                            <>
+                                <h2 className="font-sans!">Words of affirmation</h2>
+                                <p className="body-low max-w-xl!">
+                                    Real reactions from guests who stopped by for ramen, drinks, and everything spicy in between.
+                                </p>
+                            </>
                         </LayerInViewAnim>
                     </div>
                 </div>

@@ -5,6 +5,7 @@ import { DM_Mono } from "next/font/google";
 import { Navbar } from "@/components/navbar";
 import { Container } from "@/components/container";
 import { Footer } from "@/components/footer";
+import { LocalizationProvider } from "@/components/localization-provider";
 
 export const blackhood = localFont({
   src: '../../../public/fonts/blackhood.ttf',
@@ -40,9 +41,11 @@ export default function RootLayout({
       className={`${interDisplay.variable} ${blackhood.variable} ${dmMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Navbar />
-        {children}
-        <Footer />
+        <LocalizationProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </LocalizationProvider>
       </body>
     </html>
   );

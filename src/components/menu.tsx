@@ -81,9 +81,9 @@ export const Menu = async () => {
     ];
 
     return (
-        <section className="flex flex-col md:flex-row gap-2.5 mt-20">
+        <section id="menu" className="flex flex-col md:flex-row gap-2.5 mt-20">
             <Catagories catagories={catagories} />
-            <MenuItems items={items} />
+            <MenuItems items={[...items, ...items, ...items, ...items]} />
         </section>
     )
 }
