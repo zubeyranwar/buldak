@@ -41,7 +41,6 @@ const itemVariants = {
 export const MenuItem = ({ index, item, itemCount }: { index: number, item: MenuCard, itemCount: number }) => {
     if (!item) return null;
 
-    console.log({ item })
     const imageSrc = item.imageUrl || "/menu/ramen.png";
     const formattedPrice = `$${item.price.toFixed(2)}`;
     const hasOldPrice = item.oldPrice != null && item.oldPrice > item.price;

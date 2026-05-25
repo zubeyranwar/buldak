@@ -57,8 +57,6 @@ export const LayerInViewAnim = ({
         },
     };
 
-    console.log({ transition })
-
     return (
         <motion.div
             variants={variants}

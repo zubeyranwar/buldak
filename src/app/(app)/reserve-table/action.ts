@@ -1,4 +1,5 @@
 'use server'
+
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
@@ -18,7 +19,8 @@ export const handleReserveTable = async (formData: FormData) => {
 
     try {
         await payload.create({
-            collection: 'table' as never,
+            //@ts-ignore
+            collection: 'table',
             data,
         });
     } catch (error) {
