@@ -51,6 +51,14 @@ p {
         font-size: var(--body-normal);
         letter-spacing: var(--body-normal-letter-spacing);
         line-height: var(--body-normal-line-height);
+        white-space: pre-wrap;
+        word-break: break-word;
+        word-wrap: break-word;
+        z-index: 1;
+        flex: none;
+        width: 100%;
+        height: auto;
+        position: relative
 }
 
 .heading {

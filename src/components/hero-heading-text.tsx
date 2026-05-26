@@ -1,17 +1,26 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, Variants } from "motion/react";
+import React from "react";
 
-const heroHeadingTextVariants = {
+const containerVariants: Variants = {
+    hidden: {},
+    show: {
+        transition: {
+            staggerChildren: 0.03,
+            delayChildren: 0.1,
+        },
+    },
+};
+
+const charVariants: Variants = {
     hidden: {
         opacity: 0,
-        scale: 1,
         filter: "blur(10px)",
         y: 20,
     },
-    show: (index: number) => ({
+    show: {
         opacity: 1,
-        scale: 1,
         filter: "blur(0px)",
         y: 0,
         transition: {
@@ -19,52 +28,44 @@ const heroHeadingTextVariants = {
             stiffness: 120,
             damping: 40,
             mass: 1,
-            delay: 0.1 + index * 0.05,
         },
-    }),
-} as const;
+    },
+};
 
-const heroTextLines = ["Your,Korean", " Comfort Corner"];
-
-const heroCharacters = heroTextLines.flatMap((line, lineIndex) =>
-    line.split("").map((char, charIndex) => ({
-        char,
-        key: `${lineIndex}-${charIndex}-${char}`,
-        lineIndex,
-    }))
-);
+const heroTextLines = ["Your, Korean", "Comfort Corner"];
 
 export const HeroHeadingText = () => {
     return (
         <motion.h1
             className="text-heading-2! md:text-heading-1!"
-            variants={heroHeadingTextVariants as any}
+            variants={containerVariants}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.5 }}
         >
-            {heroCharacters.map((character, index) => {
-                const isSpace = character.char === " ";
-                const shouldBreakLine =
-                    character.lineIndex === 0 && index === heroTextLines[0].length - 1;
-
-                return (
-                    <span key={character.key}>
-                        {isSpace ? (
-                            <span>&nbsp;</span>
-                        ) : (
-                            <motion.span
-                                variants={heroHeadingTextVariants as any}
-                                custom={index}
-                                className="inline-block will-change-transform"
-                            >
-                                {character.char}
-                            </motion.span>
-                        )}
-                        {shouldBreakLine ? <br className="hidden md:block" /> : null}
-                    </span>
-                );
-            })}
+            {heroTextLines.map((line, lineIndex) => (
+                <React.Fragment key={lineIndex}>
+                    {line.split(" ").map((word, wordIndex) => (
+                        <React.Fragment key={wordIndex}>
+                            {wordIndex > 0 && " "}
+                            <span style={{ whiteSpace: "nowrap" }}>
+                                {word.split("").map((char, charIndex) => (
+                                    <motion.span
+                                        key={charIndex}
+                                        variants={charVariants}
+                                        className="inline-block will-change-transform"
+                                    >
+                                        {char}
+                                    </motion.span>
+                                ))}
+                            </span>
+                        </React.Fragment>
+                    ))}
+                    {lineIndex < heroTextLines.length - 1 && (
+                        <br className="hidden md:block" />
+                    )}
+                </React.Fragment>
+            ))}
         </motion.h1>
-    )
-}
+    );
+};

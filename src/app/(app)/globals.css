@@ -89,3 +89,14 @@ body {
     @apply hidden md:block h-8;
   }
 }
+
+.clear-paragraph {
+  white-space: pre-wrap;
+  word-break: break-word;
+  word-wrap: break-word;
+  z-index: 1;
+  flex: none;
+  width: 100%;
+  height: auto;
+  position: relative
+}
