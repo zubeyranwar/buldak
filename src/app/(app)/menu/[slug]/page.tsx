@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LayerInViewAnim } from "@/components/layer-in-view-anim";
+import { getCloudinaryBlurUrl } from "@/lib/cloudinary";
 
 type CatagoryDoc = {
     id: string;
@@ -103,14 +104,18 @@ export default async function MenuItemDetail({ params }: PageProps) {
 
     const relatedItems = (relatedResult.docs as MenuDoc[]).map(toMenuCard);
     const currentItem = toMenuCard(currentDoc);
+    const blurUrl = getCloudinaryBlurUrl(currentItem.imageUrl as string);
+    const prevItem = relatedItems[0] ?? null;
+    const nextItem = relatedItems[1] ?? null;
 
+    console.log({ currentDoc })
     const tagItems = [
         {
             id: "price",
             saleVisible: currentDoc.oldPrice != null && currentDoc.oldPrice > currentDoc.price,
-            oldPrice: currentDoc.oldPrice != null ? `$${currentDoc.oldPrice.toFixed(2)}` : undefined,
-            price: `$${currentDoc.price.toFixed(2)}`,
-            value: undefined as string | undefined,
+            oldPrice: currentDoc.oldPrice != null ? `${currentDoc.oldPrice.toFixed(2)} Birr` : undefined,
+            price: `${currentDoc.price.toFixed(2)} Birr`,
+            value: `${currentDoc.price.toFixed(2)} Birr`,
         },
         {
             id: "volume",
@@ -127,68 +132,99 @@ export default async function MenuItemDetail({ params }: PageProps) {
             saleVisible: false,
             value: currentDoc.label ?? undefined,
         },
-    ].filter((item) => item.saleVisible || item.value);
-
-    const relatedPreview = relatedItems[0] ?? null;
+    ].filter((item) => item.value);
+    console.log({ tagItems })
 
     return (
         <Container>
-            <main className="flex flex-col gap-2 pt-17.5">
+            <main className="flex flex-col gap-20 pt-17.5">
                 <section>
                     <div className="grid grid-cols-4">
                         <div className="spacer" />
                         <div className="flex flex-col gap-5 col-span-2">
-                            <LayerInViewAnim>
+                            <LayerInViewAnim amount={0.2} based="time">
                                 <Button className="w-fit text-white">{currentItem.categoryName}</Button>
                             </LayerInViewAnim>
-                            <div className="flex flex-col gap-7.5">
-                                <LayerInViewAnim>
+                            <div className="flex flex-col gap-6.5">
+                                <LayerInViewAnim based="time" delay={0}>
                                     <h1 className="font-sans! text-heading-2! md:text-heading-1">{currentItem.title}</h1>
                                 </LayerInViewAnim>
-                                <LayerInViewAnim>
+                                <LayerInViewAnim based="time" delay={0.2}>
                                     <p className="body-low">{currentItem.description}</p>
                                 </LayerInViewAnim>
                             </div>
                         </div>
                         <div className="spacer" />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 mt-6">
                         <div className="spacer" />
                         <div className="flex flex-col gap-7.5 col-span-2">
-                            <LayerInViewAnim>
-                                <div className="bg-white group-hover:bg-primary/10 flex items-center justify-center">
+                            <div className="md:hidden block">
+                                <div className="pt-2.5 flex flex-wrap gap-2">
+                                    {tagItems.map((item, index) => (
+                                        <div key={item.id} className="flex flex-col gap-2">
+                                            <LayerInViewAnim delay={index * 1 / 2} based="time">
+                                                <Tag value={item} saleVisible={item.saleVisible} />
+                                            </LayerInViewAnim>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <LayerInViewAnim amount={0.1}>
+                                <div className="relative w-full aspect-square bg-white overflow-hidden">
                                     <Image
                                         src={currentItem.imageUrl as string}
                                         alt={currentItem.title}
-                                        width={500}
-                                        height={500}
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 50vw"
+                                        className="object-contain"
+                                        style={{ padding: "24px" }}
+                                        placeholder="blur"
+                                        blurDataURL={blurUrl}
                                     />
                                 </div>
                             </LayerInViewAnim>
-                            <LayerInViewAnim>
+                            <LayerInViewAnim based="time" delay={0.2}>
                                 <p className="body-low">{currentItem.description}</p>
                             </LayerInViewAnim>
-                            {relatedPreview && (
-                                <div className="flex justify-between">
-                                    <div />
-                                    <div className="spacer" />
-                                    <Link href={relatedPreview.slug} className="flex flex-col items-end">
-                                        <p className="body-low orange-link">{relatedPreview.title.toLowerCase()}</p>
-                                        <Image
-                                            src={relatedPreview.imageUrl as string}
-                                            alt={relatedPreview.title}
-                                            width={50}
-                                            height={50}
-                                        />
+
+                            <div className="flex justify-between items-end">
+                                {prevItem ? (
+                                    <Link href={prevItem.slug} className="flex flex-col gap-1 items-start">
+                                        <p className="body-low orange-link">&lsaquo; {prevItem.title.toLowerCase()}</p>
+                                        <div className="relative w-[50px] h-[50px]">
+                                            <Image
+                                                src={prevItem.imageUrl as string}
+                                                alt={prevItem.title}
+                                                fill
+                                                className="object-contain"
+                                            />
+                                        </div>
                                     </Link>
-                                </div>
-                            )}
+                                ) : <div />}
+
+                                {nextItem ? (
+                                    <Link href={nextItem.slug} className="flex flex-col gap-1 items-end">
+                                        <p className="body-low orange-link">{nextItem.title.toLowerCase()} ›</p>
+                                        <div className="relative w-[50px] h-[50px]">
+                                            <Image
+                                                src={nextItem.imageUrl as string}
+                                                alt={nextItem.title}
+                                                fill
+                                                className="object-contain"
+                                            />
+                                        </div>
+                                    </Link>
+                                ) : <div />}
+                            </div>
                         </div>
-                        <div className="ml-0 md:ml-10">
+                        <div className="ml-10 hidden">
                             <div className="pt-2.5 flex flex-wrap gap-2">
-                                {tagItems.map((item) => (
+                                {tagItems.map((item, index) => (
                                     <div key={item.id} className="flex flex-col gap-2">
-                                        <Tag value={item} saleVisible={item.saleVisible} />
+                                        <LayerInViewAnim delay={index * 1 / 2} based="time">
+                                            <Tag value={item} saleVisible={item.saleVisible} />
+                                        </LayerInViewAnim>
                                     </div>
                                 ))}
                             </div>
@@ -210,7 +246,7 @@ export default async function MenuItemDetail({ params }: PageProps) {
                     </div>
                 </section>
             </main>
-        </Container>
+        </Container >
     );
 }
 

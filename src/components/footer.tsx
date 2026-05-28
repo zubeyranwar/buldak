@@ -8,7 +8,7 @@ export const Footer = () => {
     return (
         <footer className="flex flex-col gap-25 pt-37.5 pb-12">
             <Container>
-                <LayerInViewAnim offsetY={40} delay={0}>
+                <LayerInViewAnim offsetY={40} delay={0} amount={0.1}>
 
                     <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 md:gap-0">
                         <div className="spacer" />

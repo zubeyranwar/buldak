@@ -1,36 +1,5 @@
 "use client";
 
-/**
- * WheelPicker.tsx
- *
- * Provides three components that together recreate the iOS-style
- * drum-roll reservation UI:
- *
- *   • WheelColumn   – generic, reusable spinning-wheel column
- *   • DateTimePicker – two-column wheel (date | time, 30-min slots)
- *   • PartySizePicker – row of circular number bubbles
- *
- * Behaviours implemented
- * ──────────────────────
- * - Drag (mouse + touch via Pointer Events API)
- * - Momentum on release – velocity at lift-off continues the scroll
- * - Mouse-wheel / trackpad scrolling
- * - SCROLL LOCK: while the pointer is inside a WheelColumn OR the wheel
- *   event fires inside it, the outer page scroll is blocked.  This is
- *   done by attaching a non-passive "wheel" listener directly to the
- *   DOM node (React's synthetic onWheel is passive by default in some
- *   bundler configs and cannot call preventDefault reliably).
- * - Snap to nearest item on every interaction end
- * - Controlled via selectedIndex prop; internal state kept in sync
- *
- * Responsiveness
- * ──────────────
- * The picker fills 100% of its container width.  Minimum widths are
- * enforced on each column so text never wraps on small phones.
- * ITEM_HEIGHT is declared as a CSS-style constant so tweaking one
- * value reflows the whole component.
- */
-
 import {
   useState,
   useRef,
@@ -40,24 +9,21 @@ import {
   type RefObject,
 } from "react";
 
-// ─── Layout constant ──────────────────────────────────────────────────────────
-/**
- * Height of a single row in pixels.
- * Change this one value to resize the whole wheel uniformly.
- */
+// ─── Layout constants ─────────────────────────────────────────────────────────
+
 const ITEM_HEIGHT = 42;
+const VISIBLE_ROWS = 5;
+const CENTER_OFFSET = Math.floor(VISIBLE_ROWS / 2);
+const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ROWS;
 
 /**
- * How many rows are visible at once (must be odd so there is a clear
- * centre row).  The selected item sits in row index CENTER_OFFSET.
+ * Drag sensitivity — lower = slower / more precise.
+ * 1.0 = original speed, 0.5 = half speed (recommended for mobile).
  */
-const VISIBLE_ROWS = 5;
-const CENTER_OFFSET = Math.floor(VISIBLE_ROWS / 2); // 2
-const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ROWS;   // 210 px
+const DRAG_SENSITIVITY = 0.5;
 
 // ─── Data builders ────────────────────────────────────────────────────────────
 
-/** Returns an array of human-readable date strings starting from today. */
 function buildDates(count = 60): string[] {
   const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
   const MO = [
@@ -74,10 +40,6 @@ function buildDates(count = 60): string[] {
   });
 }
 
-/**
- * Returns half-hour time slots from 6:00 AM → 11:30 PM.
- * Format: "7:00 PM"
- */
 function buildTimes(): string[] {
   const slots: string[] = [];
   for (let h = 6; h < 24; h++) {
@@ -90,30 +52,19 @@ function buildTimes(): string[] {
   return slots;
 }
 
-/** Exported so callers can display / convert the selected index. */
 export const DATES: string[] = buildDates();
 export const TIMES: string[] = buildTimes();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Clamp n so it stays within [0, max]. */
 function clamp(n: number, max: number): number {
   return Math.max(0, Math.min(max, n));
 }
 
-/**
- * Attach a DOM-level (non-passive) wheel listener to ref.current.
- * Returns a cleanup function.  We do this instead of React's onWheel
- * because React marks its synthetic wheel events as passive, which
- * means calling preventDefault() inside them has no effect and the
- * page still scrolls behind the picker.
- */
 function useNonPassiveWheel(
   ref: RefObject<HTMLDivElement | null>,
   handler: (e: WheelEvent) => void
 ) {
-  // Keep the handler in a ref so the effect doesn't need to re-run
-  // when the handler closure changes.
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
@@ -122,7 +73,7 @@ function useNonPassiveWheel(
     if (!el) return;
 
     const listener = (e: WheelEvent) => {
-      e.preventDefault(); // ← blocks page scroll
+      e.preventDefault();
       e.stopPropagation();
       handlerRef.current(e);
     };
@@ -137,19 +88,10 @@ function useNonPassiveWheel(
 type TextAlign = "left" | "center" | "right";
 
 interface WheelColumnProps {
-  /** Full list of string options to scroll through. */
   items: string[];
-  /** Controlled selected index (0-based). */
   selectedIndex: number;
-  /** Called with (newIndex, newValue) whenever the selection changes. */
   onChange: (index: number, value: string) => void;
-  /**
-   * Text alignment inside each cell.
-   * Use "right" for the date column and "left" for the time column
-   * so they read naturally across the divider line.
-   */
   align?: TextAlign;
-  /** Minimum column width in px – prevents text wrapping on small screens. */
   minWidth?: number;
 }
 
@@ -160,31 +102,24 @@ const WheelColumn: FC<WheelColumnProps> = ({
   align = "center",
   minWidth = 80,
 }) => {
-  // `cur` drives rendering; it may be fractional during a drag so the
-  // track appears to move continuously.
   const [cur, setCur] = useState<number>(selectedIndex);
 
-  // Mutable refs that don't need to trigger re-renders.
   const colRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
-  const startY = useRef(0);       // pointer Y at drag start
-  const startIdx = useRef(selectedIndex); // index at drag start
-  const velY = useRef(0);         // drag velocity (px/ms) at last move
+  const startY = useRef(0);
+  const startIdx = useRef(selectedIndex);
+  const velY = useRef(0);
   const lastY = useRef(0);
   const lastT = useRef(0);
 
-  // Keep `startIdx` in sync when the column is controlled externally.
   useEffect(() => {
     if (selectedIndex !== Math.round(cur)) {
       setCur(selectedIndex);
       startIdx.current = selectedIndex;
     }
-    // Intentionally only re-sync when the prop changes, not when `cur`
-    // changes from internal drag.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
-  /** Snap cur to the nearest integer, call onChange, persist startIdx. */
   const snapTo = useCallback(
     (rawIdx: number, animate = true) => {
       const snapped = clamp(Math.round(rawIdx), items.length - 1);
@@ -195,9 +130,10 @@ const WheelColumn: FC<WheelColumnProps> = ({
     [items, onChange]
   );
 
-  // ── Pointer events (drag) ──────────────────────────────────────────────────
+  // ── Pointer events ────────────────────────────────────────────────────────
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     isDragging.current = true;
     startY.current = e.clientY;
@@ -210,24 +146,21 @@ const WheelColumn: FC<WheelColumnProps> = ({
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging.current) return;
 
-    // Track velocity so we can add momentum on release.
     const dy = e.clientY - lastY.current;
     const dt = e.timeStamp - lastT.current || 1;
     velY.current = dy / dt;
     lastY.current = e.clientY;
     lastT.current = e.timeStamp;
 
-    // Update cur continuously (fractional) for smooth visual feedback.
-    const delta = (e.clientY - startY.current) / ITEM_HEIGHT;
+    const delta = ((e.clientY - startY.current) / ITEM_HEIGHT) * DRAG_SENSITIVITY;
     setCur(clamp(startIdx.current - delta, items.length - 1));
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     isDragging.current = false;
 
-    // Compute where the list should land after coasting.
-    const delta = (e.clientY - startY.current) / ITEM_HEIGHT;
-    const momentumSteps = (-velY.current * 80) / ITEM_HEIGHT;
+    const delta = ((e.clientY - startY.current) / ITEM_HEIGHT) * DRAG_SENSITIVITY;
+    const momentumSteps = (-velY.current * 40) / ITEM_HEIGHT;
     const target = startIdx.current - delta + momentumSteps;
     snapTo(target);
   };
@@ -237,7 +170,7 @@ const WheelColumn: FC<WheelColumnProps> = ({
     snapTo(startIdx.current);
   };
 
-  // ── Non-passive wheel (scroll lock) ───────────────────────────────────────
+  // ── Non-passive wheel ─────────────────────────────────────────────────────
   useNonPassiveWheel(colRef, (e: WheelEvent) => {
     const next = clamp(startIdx.current + Math.sign(e.deltaY), items.length - 1);
     startIdx.current = next;
@@ -245,15 +178,10 @@ const WheelColumn: FC<WheelColumnProps> = ({
     onChange(next, items[next]);
   });
 
-  // ── Derived values ─────────────────────────────────────────────────────────
+  // ── Derived values ────────────────────────────────────────────────────────
 
-  /** translateY that positions item[cur] in the selection band. */
   const trackY = (CENTER_OFFSET - cur) * ITEM_HEIGHT;
 
-  /**
-   * Per-item distance from the selected row.  Used to fade and
-   * de-emphasise rows as they move away from centre.
-   */
   const distanceFrom = (i: number) => Math.abs(i - Math.round(cur));
 
   const itemOpacity = (dist: number) =>
@@ -265,7 +193,7 @@ const WheelColumn: FC<WheelColumnProps> = ({
     right: "flex-end",
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
       ref={colRef}
@@ -278,13 +206,14 @@ const WheelColumn: FC<WheelColumnProps> = ({
         cursor: "grab",
         userSelect: "none",
         WebkitUserSelect: "none",
+        touchAction: "none",
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {/* ── Highlight band ── */}
+      {/* Highlight band */}
       <div
         aria-hidden
         style={{
@@ -300,7 +229,7 @@ const WheelColumn: FC<WheelColumnProps> = ({
         }}
       />
 
-      {/* ── Top fade ── */}
+      {/* Top fade */}
       <div
         aria-hidden
         style={{
@@ -316,7 +245,7 @@ const WheelColumn: FC<WheelColumnProps> = ({
         }}
       />
 
-      {/* ── Bottom fade ── */}
+      {/* Bottom fade */}
       <div
         aria-hidden
         style={{
@@ -332,14 +261,13 @@ const WheelColumn: FC<WheelColumnProps> = ({
         }}
       />
 
-      {/* ── Scrolling track ── */}
+      {/* Scrolling track */}
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           top: 0,
-          // Snap transition only when not mid-drag.
           transform: `translateY(${trackY}px)`,
           transition: isDragging.current
             ? "none"
@@ -381,26 +309,16 @@ const WheelColumn: FC<WheelColumnProps> = ({
 // ─── DateTimePicker ───────────────────────────────────────────────────────────
 
 export interface DateTimeValue {
-  date: string; // e.g. "Today" | "Tomorrow" | "Mon, 12 May"
-  time: string; // e.g. "7:00 PM"
+  date: string;
+  time: string;
 }
 
 interface DateTimePickerProps {
-  /** Called whenever either column changes. */
   onChange?: (value: DateTimeValue) => void;
-  /** Initial date string (must match an entry in DATES). Defaults to "Today". */
   defaultDate?: string;
-  /** Initial time string (must match an entry in TIMES). Defaults to "7:00 PM". */
   defaultTime?: string;
 }
 
-/**
- * DateTimePicker
- *
- * Two-column wheel picker: date on the left, time on the right.
- * Times are spaced in 30-minute increments (6:00 AM – 11:30 PM).
- * Fires onChange with { date, time } whenever either column moves.
- */
 export const DateTimePicker: FC<DateTimePickerProps> = ({
   onChange,
   defaultDate = "Today",
@@ -412,7 +330,6 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
   const [dateIdx, setDateIdx] = useState(initialDateIdx);
   const [timeIdx, setTimeIdx] = useState(initialTimeIdx);
 
-  // Notify parent whenever selection changes.
   useEffect(() => {
     onChange?.({ date: DATES[dateIdx], time: TIMES[timeIdx] });
   }, [dateIdx, timeIdx, onChange]);
@@ -427,7 +344,6 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
         overflow: "hidden",
       }}
     >
-      {/* Date column – right-aligned so it reads close to the divider */}
       <WheelColumn
         items={DATES}
         selectedIndex={dateIdx}
@@ -436,7 +352,6 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
         minWidth={120}
       />
 
-      {/* Visual divider */}
       <div
         aria-hidden
         style={{
@@ -446,7 +361,6 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
         }}
       />
 
-      {/* Time column – left-aligned */}
       <WheelColumn
         items={TIMES}
         selectedIndex={timeIdx}
@@ -461,33 +375,17 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 // ─── PartySizePicker ──────────────────────────────────────────────────────────
 
 interface PartySizePickerProps {
-  /** Highest number to show. Defaults to 8. */
   max?: number;
-  /** Currently selected guest count. */
   value?: number;
-  /** Called when the user taps a different number. */
   onChange?: (guests: number) => void;
 }
 
-/**
- * PartySizePicker
- *
- * A horizontally scrollable row of circular number buttons.
- * The selected number gets a red outline matching the app's brand colour.
- * Wraps naturally on very narrow screens.
- */
 export const PartySizePicker: FC<PartySizePickerProps> = ({
   max = 8,
   value = 2,
   onChange,
 }) => (
-  <div
-    style={{
-      display: "flex",
-      gap: 10,
-      flexWrap: "wrap",
-    }}
-  >
+  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
     {Array.from({ length: max }, (_, i) => i + 1).map((n) => {
       const isSelected = n === value;
       return (

@@ -4,6 +4,8 @@ import { motion } from "motion/react";
 import Image from "next/image";
 import type { MenuCard } from "./menu-types";
 import Link from "next/link";
+import { getCloudinaryBlurUrl } from "@/lib/cloudinary";
+import { LayerInViewAnim } from "./layer-in-view-anim";
 
 const springTransition = {
     type: "spring",
@@ -42,7 +44,8 @@ export const MenuItem = ({ index, item, itemCount }: { index: number, item: Menu
     if (!item) return null;
 
     const imageSrc = item.imageUrl || "/menu/ramen.png";
-    const formattedPrice = `$${item.price.toFixed(2)}`;
+    const blurUrl = getCloudinaryBlurUrl(imageSrc);
+    const formattedPrice = `${item.price} Birr`;
     const hasOldPrice = item.oldPrice != null && item.oldPrice > item.price;
     const formattedOldPrice = hasOldPrice ? `$${item.oldPrice?.toFixed(2)}` : null;
 
@@ -59,31 +62,47 @@ export const MenuItem = ({ index, item, itemCount }: { index: number, item: Menu
                     initial="rest"
                     whileHover="hover"
                     animate="rest"
-                    className="relative group flex flex-col gap-1 cursor-pointer">
-                    <div
-                        className="bg-[#EEE9E3] group-hover:bg-primary/10 flex items-center justify-center"
-                    >
+                    className="relative group flex flex-col gap-1 cursor-pointer"
+                >
+                    <div className="relative w-full aspect-square bg-[#EEE9E3] group-hover:bg-primary/10 overflow-hidden">
                         <Image
                             src={imageSrc}
                             alt={item.title}
-                            width={300}
-                            height={200}
-                            className="aspect-4/5"
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-contain p-6"
+                            placeholder="blur"
+                            blurDataURL={blurUrl}
                         />
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <motion.p variants={textVariants} transition={springTransition} className="nav-s">{item.categoryName}</motion.p>
-                        <p className="nav-link text-primary!">{item.title}</p>
-                        <motion.p variants={textBlackVariants} transition={springTransition} className="nav-s">{item.description}</motion.p>
-                        <motion.p variants={textVariants} transition={springTransition} className="nav-s">
-                            {hasOldPrice && (
-                                <motion.span variants={textVariants} transition={springTransition} className="nav-s-decor">{formattedOldPrice}</motion.span>
-                            )} <span>{formattedPrice}</span>
-                        </motion.p>
+
+                    <div className="flex flex-col gap-2 pt-1">
+                        <LayerInViewAnim as="p" based="physics" delay={0.1} amount={0.1} className="nav-s text-gray!">
+                            {item.categoryName}
+                        </LayerInViewAnim>
+
+                        <LayerInViewAnim as="p" based="physics" delay={0} amount={0.1} className="nav-link text-primary!">
+                            {item.title}
+                        </LayerInViewAnim>
+
+                        <LayerInViewAnim as="p" based="physics" delay={0.1} amount={0.1} className="nav-s text-gray!">
+                            {item.description}
+                        </LayerInViewAnim>
+
+                        <LayerInViewAnim as="p" based="physics" delay={0.2} amount={0.1} className="nav-s text-gray!">
+                            {hasOldPrice ? (
+                                <span className="nav-s-decor">{formattedOldPrice}</span>
+                            ) : (
+                                <span>{formattedPrice}</span>
+                            )}
+                        </LayerInViewAnim>
                     </div>
-                    <span className="absolute top-2 left-2 border border-primary rounded-sm nav-s text-primary! px-2 py-1">{item.label}</span>
+
+                    <span className="absolute top-2 left-2 border border-primary rounded-sm nav-s text-primary! px-2 py-1">
+                        {item.label}
+                    </span>
                 </motion.div>
             </motion.div>
         </Link>
-    )
-}
+    );
+};

@@ -44,7 +44,7 @@ export const HeroHeadingText = () => {
             viewport={{ once: true, amount: 0.5 }}
         >
             {heroTextLines.map((line, lineIndex) => (
-                <React.Fragment key={lineIndex}>
+                <span key={lineIndex} className="block">
                     {line.split(" ").map((word, wordIndex) => (
                         <React.Fragment key={wordIndex}>
                             {wordIndex > 0 && " "}
@@ -61,10 +61,7 @@ export const HeroHeadingText = () => {
                             </span>
                         </React.Fragment>
                     ))}
-                    {lineIndex < heroTextLines.length - 1 && (
-                        <br className="hidden md:block" />
-                    )}
-                </React.Fragment>
+                </span>
             ))}
         </motion.h1>
     );

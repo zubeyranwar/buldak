@@ -79,7 +79,9 @@ p {
         text-transform: lowercase;
 }
 
-.nav-link {
+.nav-link,
+p.nav-link,
+a.nav-link {
         font-family: var(--font-dm-mono);
         color: var(--white);
         font-size: var(--nav-link);
@@ -88,7 +90,8 @@ p {
         text-transform: uppercase;
 }
 
-.nav-s {
+.nav-s,
+p.nav-s {
         font-family: var(--font-dm-mono);
         color: var(--white);
         font-size: var(--nav-s);

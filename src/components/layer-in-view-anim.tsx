@@ -20,6 +20,7 @@ type LayerInViewAnimProps<T extends ElementType = "div"> = {
     delay?: number;
     bounce?: number;
     once?: boolean;
+    amount?: number;
     children: React.ReactNode;
     className?: string;
 } & Omit<HTMLMotionProps<"div">, "as" | "children" | "className">;
@@ -34,6 +35,7 @@ export const LayerInViewAnim = <T extends ElementType = "div">({
     delay,
     bounce = 0.2,
     once = true,
+    amount = 0.1,
     children,
     className,
     ...rest
@@ -74,7 +76,7 @@ export const LayerInViewAnim = <T extends ElementType = "div">({
             variants={variants}
             initial="hidden"
             whileInView="show"
-            viewport={{ once, amount: 0.5 }}
+            viewport={{ once, amount }}
             className={className}
             {...rest}
         >

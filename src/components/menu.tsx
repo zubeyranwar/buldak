@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import { Catagories } from "./catagories";
 import { MenuItems } from "./menu-items";
 import type { MenuCard, MenuCategory } from "./menu-types";
+import { MenuClient } from "./menu-client";
 
 type CatagoryDoc = {
     id: string
@@ -81,10 +82,7 @@ export const Menu = async () => {
     ];
 
     return (
-        <section id="menu" className="flex flex-col md:flex-row gap-2.5 mt-20">
-            <Catagories catagories={catagories} />
-            <MenuItems items={[...items, ...items, ...items, ...items]} />
-        </section>
-    )
+        <MenuClient items={items} catagories={catagories} />
+    );
 }
 
