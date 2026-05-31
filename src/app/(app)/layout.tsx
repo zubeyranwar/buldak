@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import localFont from 'next/font/local'
-import { DM_Mono } from "next/font/google";
-import { Navbar } from "@/components/navbar";
-import { Container } from "@/components/container";
 import { Footer } from "@/components/footer";
 import { LocalizationProvider } from "@/components/localization-provider";
+import { Navbar } from "@/components/navbar";
+import type { Metadata } from "next";
+import { DM_Mono } from "next/font/google";
+import localFont from 'next/font/local';
+import "./globals.css";
 
 export const blackhood = localFont({
   src: '../../../public/fonts/blackhood.ttf',

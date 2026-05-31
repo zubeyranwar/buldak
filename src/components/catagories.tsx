@@ -2,18 +2,21 @@
 
 import { motion } from "motion/react";
 import type { MenuCategory } from "./menu-types";
+import { cn } from "@/lib/utils";
 
 export const Catagories = ({
     catagories,
     selected,
     onSelect,
+    className
 }: {
     catagories: MenuCategory[];
     selected: string;
     onSelect: (id: string) => void;
+    className?: string
 }) => {
     return (
-        <div className="pb-2 md:w-[20%] flex md:flex-col items-center md:items-start justify-center md:justify-start gap-4">
+        <div className={cn("pb-2 flex md:flex-col items-center md:items-start justify-center md:justify-start gap-4", className ?? "")}>
             {catagories.map(category => (
                 <Catagory
                     key={category.id}

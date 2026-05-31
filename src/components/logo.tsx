@@ -25,6 +25,20 @@ const CaretRight = (props: IconProps) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256" {...props}><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"></path></svg>
 )
 
+const RightArrow = (props: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="44" height="49" viewBox="0 0 44 49" fill="none" {...props}>
+    <circle cx="22" cy="26.5" r="21.5" fill="#E55441" stroke="black"></circle>
+    <path d="M24.1724 39.5L21.9849 37.3409L30.9906 28.3352H7.66669V25.2102H30.9906L21.9849 16.233L24.1724 14.0455L36.8996 26.7727L24.1724 39.5Z" fill="black"></path>
+  </svg>
+)
+
+const LeftArrow = (props: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="44" height="49" viewBox="0 0 44 49" fill="none" {...props}>
+    <circle cx="22" cy="22.5" r="21.5" transform="rotate(180 22 22.5)" fill="#E55441" stroke="black"></circle>
+    <path d="M19.8277 9.5L22.0152 11.6591L13.0095 20.6648L36.3333 20.6648L36.3333 23.7898L13.0095 23.7898L22.0152 32.767L19.8277 34.9545L7.10039 22.2273L19.8277 9.5Z" fill="black"></path>
+  </svg>
+)
+
 export const Logo = {
   tiktok: Tiktok,
   instagram: Instagram,
@@ -32,5 +46,7 @@ export const Logo = {
   x: X,
   play: Play,
   translate: Translate,
-  caretRight: CaretRight
+  caretRight: CaretRight,
+  leftArrow: LeftArrow,
+  rightArrow: RightArrow
 }

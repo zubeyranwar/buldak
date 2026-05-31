@@ -1,90 +1,187 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import useEmblaCarousel from "embla-carousel-react";
+import { motion, Variants } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TestimonalDoc } from "./testimonals";
 import { Logo } from "./logo";
-import { Pagination } from "swiper/modules";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { LayerInViewAnim } from "./layer-in-view-anim";
+import { detectPlatform, getEmbedUrl, extractHandle } from "@/lib/social-url";
+import Image from "next/image";
+import { getCloudinaryBlurUrl } from "@/lib/cloudinary";
 
-interface TestimonalCardProps extends Omit<TestimonalDoc, "id"> { }
-
-export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[] }) => {
-    return (
-        <Swiper
-            slidesPerView={1}
-            spaceBetween={20}
-            centeredSlides={true}
-            initialSlide={Math.floor(testimonals.length / 2) - 2}
-            breakpoints={{
-                640: {
-                    slidesPerView: 2,
-                    spaceBetween: 20,
-                },
-                1024: {
-                    slidesPerView: 3,
-                    spaceBetween: 30,
-                },
-                1280: {
-                    slidesPerView: 4,
-                    spaceBetween: 30,
-                },
-            }}
-            pagination={{
-                clickable: true,
-            }}
-            modules={[Pagination]}
-            className="w-full overflow-visible! pb-12 pl-4 sm:pl-6 mt-0!"
-        >
-            {testimonals.map(testimonal => (
-                <SwiperSlide key={testimonal.id} className="h-auto! w-[60%]! sm:w-[50%]! lg:w-[16%]!">
-                    <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0}>
-                        <TestimonalCard {...testimonal} />
-                    </LayerInViewAnim>
-                </SwiperSlide>
-            ))}
-        </Swiper>
-    );
+function getAutoplayEmbedUrl(url: string, platform: string): string | null {
+    const base = getEmbedUrl(url);
+    if (!base) return null;
+    if (platform === "tiktok") return `${base}?autoplay=1&loop=0`;
+    if (platform === "instagram") return `${base}?autoplay=1&muted=1`;
+    return base;
 }
 
-export const TestimonalCard = ({ quote, coverImage, videoUrl }: TestimonalCardProps) => {
+export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[] }) => {
+    const [emblaRef, emblaApi] = useEmblaCarousel({
+        loop: true,
+        align: "center",
+        dragFree: false,
+    });
+
+    const [selectedIndex, setSelectedIndex] = useState(0);
+
+    const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
+    const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
+
+    const scrollToIndex = useCallback((i: number) => {
+        emblaApi?.scrollTo(i);
+    }, [emblaApi]);
+
+    useEffect(() => {
+        if (!emblaApi) return;
+        const onSelect = () => setSelectedIndex(emblaApi.selectedScrollSnap());
+        emblaApi.on("select", onSelect);
+        onSelect();
+        return () => { emblaApi.off("select", onSelect); };
+    }, [emblaApi]);
+
     return (
-        <article className="flex h-full flex-col gap-2.5">
-            <Link href={videoUrl} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded-[20px] border-black">
-                <Image
-                    src={coverImage.url}
-                    alt="Testimonial poster"
-                    width={640}
-                    height={800}
-                    className="aspect-3/5 w-full object-contain"
-                />
-                <span className="pointer-events-none absolute inset-0 grid place-items-center">
-                    <Logo.play className="bg-white rounded-full px-1 size-10" />
-                </span>
-            </Link>
+        <div className="relative select-none">
+            <button
+                onClick={scrollPrev}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 cursor-pointer"
+                aria-label="Previous"
+            >
+                <Logo.leftArrow />
+            </button>
+            <button
+                onClick={scrollNext}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 cursor-pointer"
+                aria-label="Next"
+            >
+                <Logo.rightArrow />
+            </button>
 
-            <div className="space-y-1 px-1">
-                <p className="font-dm-mono nav-s normal-case! text-black! leading-[1.3]! line-clamp-2">
-                    "{quote.trim()}"
-                </p>
-
-                {/* <div className="w-full font-dm-mono nav-s flex items-center gap-y-1 text-black! uppercase">
-                    <span>{name}</span>
-                    <span className="text-black-80!">used</span>
-                    <div className="ml-3 flex flex-col">
-                        {used?.map((item, index) => (
-                            <Link
-                                href={`/menu/${sluggish(item.trim())}`}
-                                key={index}
-                                className="text-primary!"
+            <div className="overflow-hidden" ref={emblaRef}>
+                <div className="flex gap-5 px-4">
+                    {testimonals.map((t, i) => {
+                        const isActive = i === selectedIndex;
+                        return (
+                            <div
+                                key={t.id}
+                                className="flex-none transition-opacity duration-300 cursor-pointer"
+                                style={{
+                                    width: "calc(70vh * 0.5625)",
+                                    opacity: isActive ? 1 : 0.5,
+                                }}
+                                onClick={() => !isActive && scrollToIndex(i)}
                             >
-                                {item.trim()}{index < used.length - 1 ? "," : ""}
-                            </Link>
-                        ))}
-                    </div>
-                </div> */}
+                                <TestimonalCard {...t} isActive={isActive} />
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
-        </article>
+        </div>
+    );
+};
+
+export const TestimonalCard = ({
+    coverImage,
+    videoUrl,
+    isActive,
+}: Omit<TestimonalDoc, "id"> & { isActive: boolean }) => {
+    const platform = detectPlatform(videoUrl);
+    const handle = extractHandle(videoUrl);
+    const embedUrl = getAutoplayEmbedUrl(videoUrl, platform);
+    const blurUrl = getCloudinaryBlurUrl(coverImage?.url ?? "");
+    const [iframeReady, setIframeReady] = useState(false);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    const PlatformIcon = platform === "instagram" ? Logo.instagram : Logo.tiktok;
+
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, scale: 0.85, y: 18 },
+        show: ({
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            transition: {
+                type: "spring",
+                stiffness: 400,
+                damping: 58,
+                mass: 1,
+                delay: 0.8
+            },
+        }),
+    } as const;
+
+    useEffect(() => {
+        if (!isActive) {
+            setIframeReady(false);
+        }
+    }, [isActive]);
+
+    return (
+        <motion.div
+            variants={itemVariants as any}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }} className="relative h-[70vh] aspect-9/16 rounded-3xl overflow-hidden border border-black"
+        >
+            {coverImage?.url && (
+                <div
+                    className="absolute inset-0 z-10 transition-opacity duration-700"
+                    style={{ opacity: iframeReady ? 0 : 1 }}
+                >
+                    <Image
+                        src={coverImage.url}
+                        fill
+                        alt="testimonial cover"
+                        className="object-cover"
+                        placeholder="blur"
+                        blurDataURL={blurUrl}
+                    />
+                </div>
+            )}
+
+            {!isActive && (
+                <div className="absolute inset-0 bg-primary/50 mix-blend-multiply z-20 pointer-events-none" />
+            )}
+
+            {embedUrl && isActive && (
+                <iframe
+                    ref={iframeRef}
+                    key={videoUrl}
+                    src={embedUrl}
+                    onLoad={() => setIframeReady(true)}
+                    className="absolute inset-0 w-full h-full border-0 z-30 transition-opacity duration-700"
+                    style={{ opacity: iframeReady ? 1 : 0 }}
+                    allowFullScreen
+                    scrolling="no"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                />
+            )}
+
+            <Link
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute inset-0 z-40 flex items-end p-4"
+                style={{
+                    background: "linear-gradient(rgba(0,0,0,0) 80%, rgba(0,0,0,0.85) 100%)",
+                    pointerEvents: "none",
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center gap-2" style={{ pointerEvents: "auto" }}>
+                    <div className="size-8 rounded-full bg-white flex items-center justify-center shrink-0">
+                        <PlatformIcon className="size-4" />
+                    </div>
+                    {handle && (
+                        <span className="text-white text-sm font-medium">
+                            @{platform === "instagram" ? "buldakdoro" : handle}
+                        </span>
+                    )}
+                </div>
+            </Link>
+        </motion.div>
     );
 };

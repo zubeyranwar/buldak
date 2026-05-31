@@ -8,9 +8,7 @@ import { LayerInViewAnim } from "./layer-in-view-anim";
 export type TestimonalDoc = {
     id: string;
     quote: string;
-    coverImage: {
-        url: string;
-    };
+    coverImage?: { url: string } | null;
     videoUrl: string;
 }
 
@@ -44,7 +42,7 @@ export const Testimonals = async () => {
                     </div>
                 </div>
             </Container>
-            <TestimonalSwiper testimonals={Array.from({ length: 10 }, () => testimonals).flat()} />
+            <TestimonalSwiper testimonals={testimonals} />
         </section>
     )
 }

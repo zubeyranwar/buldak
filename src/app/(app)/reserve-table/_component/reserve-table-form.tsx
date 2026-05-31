@@ -1,11 +1,13 @@
 "use client"
 
+import { Turnstile } from '@marsidev/react-turnstile'
 import { DateTimePicker, PartySizePicker } from '@/components/wheelpicker';
 import { useState } from 'react';
 
 export const ReserveTableForm = () => {
     const [datetime, setDatetime] = useState({});
     const [guests, setGuests] = useState(2);
+    const [token, setToken] = useState<string | null>(null);
 
     return (
         <>
@@ -72,6 +74,15 @@ export const ReserveTableForm = () => {
                     name="time"
                     value={(datetime as any)?.time || ""}
                 />
+
+                <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                    onSuccess={setToken}
+                    onError={() => setToken(null)}
+                    onExpire={() => setToken(null)}
+                />
+
+                <input type="hidden" name="cf-turnstile-response" value={token ?? ""} />
             </div>
         </>
     );

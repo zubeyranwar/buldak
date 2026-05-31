@@ -1,28 +1,11 @@
 "use client";
 
+import { getCloudinaryBlurUrl } from "@/lib/cloudinary";
 import { motion } from "motion/react";
 import Image from "next/image";
-import type { MenuCard } from "./menu-types";
 import Link from "next/link";
-import { getCloudinaryBlurUrl } from "@/lib/cloudinary";
 import { LayerInViewAnim } from "./layer-in-view-anim";
-
-const springTransition = {
-    type: "spring",
-    duration: 0.4,
-    bounce: 0.2,
-    delay: 0,
-} as const;
-
-const textVariants = {
-    rest: { color: "var(--gray)" },
-    hover: { color: "var(--primary)" },
-};
-
-const textBlackVariants = {
-    rest: { color: "var(--black)" },
-    hover: { color: "var(--primary)" },
-};
+import type { MenuCard } from "./menu-types";
 
 const itemVariants = {
     hidden: { opacity: 0, scale: 0.85, y: 18 },

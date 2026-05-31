@@ -13,13 +13,14 @@ export const MenuClient = ({ items, catagories }: { items: MenuCard[], catagorie
         : items.filter(item => item.categoryName === catagories.find(c => c.id === selected)?.name);
 
     return (
-        <section id="menu" className="flex flex-col md:flex-row gap-2.5 mt-20">
+        <section id="menu" className="grid grid-cols-1 md:grid-cols-4 mt-20">
             <Catagories
+                className="col-span-1"
                 catagories={catagories}
                 selected={selected}
                 onSelect={setSelected}
             />
-            <MenuItems items={filtered} />
+            <MenuItems className="col-span-3" items={filtered} />
         </section>
     );
 };

@@ -60,10 +60,10 @@ export const Footer = () => {
 
                             <div>
                                 <LayerInViewAnim as="p" scale={0.85} offsetY={18} based="physics" className="nav-link text-black! black-link">
-                                    +17364528200
+                                    +251978561111
                                 </LayerInViewAnim>
                                 <LayerInViewAnim as="p" scale={0.85} offsetY={18} based="physics" className="nav-link text-black! black-link">
-                                    info@buldak.com
+                                    info@buldakdoro.com
                                 </LayerInViewAnim>
                             </div>
 
