@@ -23,6 +23,8 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
         loop: true,
         align: "center",
         dragFree: false,
+        startIndex: 2,
+        
     });
 
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -42,6 +44,22 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
         return () => { emblaApi.off("select", onSelect); };
     }, [emblaApi]);
 
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, scale: 0.85, y: 18 },
+        show: ({
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            transition: {
+                type: "spring",
+                stiffness: 400,
+                damping: 58,
+                mass: 1,
+                delay: 0.6
+            },
+        }),
+    } as const;
+
     return (
         <div className="relative select-none">
             <button
@@ -60,7 +78,12 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
             </button>
 
             <div className="overflow-hidden" ref={emblaRef}>
-                <div className="flex gap-5 px-4">
+                <motion.div
+                    variants={itemVariants as any}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, amount: 0.2 }}
+                    className="flex gap-5 px-4">
                     {testimonals.map((t, i) => {
                         const isActive = i === selectedIndex;
                         return (
@@ -77,7 +100,7 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
                             </div>
                         );
                     })}
-                </div>
+                </motion.div>
             </div>
         </div>
     );
@@ -97,22 +120,6 @@ export const TestimonalCard = ({
 
     const PlatformIcon = platform === "instagram" ? Logo.instagram : Logo.tiktok;
 
-    const itemVariants: Variants = {
-        hidden: { opacity: 0, scale: 0.85, y: 18 },
-        show: ({
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            transition: {
-                type: "spring",
-                stiffness: 400,
-                damping: 58,
-                mass: 1,
-                delay: 0.8
-            },
-        }),
-    } as const;
-
     useEffect(() => {
         if (!isActive) {
             setIframeReady(false);
@@ -120,11 +127,8 @@ export const TestimonalCard = ({
     }, [isActive]);
 
     return (
-        <motion.div
-            variants={itemVariants as any}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.2 }} className="relative h-[70vh] aspect-9/16 rounded-3xl overflow-hidden border border-black"
+        <div
+            className="relative h-[70vh] aspect-9/16 rounded-3xl overflow-hidden border border-black"
         >
             {coverImage?.url && (
                 <div
@@ -182,6 +186,6 @@ export const TestimonalCard = ({
                     )}
                 </div>
             </Link>
-        </motion.div>
+        </div>
     );
 };

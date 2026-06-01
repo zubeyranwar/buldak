@@ -48,7 +48,7 @@ export const Navbar = () => {
                     </div>
 
                     <div className={`${open ? "block" : "hidden"} absolute top-24 left-0 inset-0 bg-background h-screen z-9999`}>
-                        <div className="w-full flex flex-col items-center gap-30">
+                        <div className="w-full flex flex-col items-center gap-20">
                             <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0}>
                                 <Link href="/menu" onClick={() => setOpen(false)} className="nav-link text-primary!">Menu {/*<span className="-ml-1 text-[12px]">{17}</span>*/}</Link>
                             </LayerInViewAnim>
@@ -63,7 +63,12 @@ export const Navbar = () => {
                             </div>
                             <div className="space-y-2 text-center">
                                 <p className="nav-link text-black!">bole, Addis ababa <br /> 43.7031° N, 5.4500° E  </p>
-                                <p className="nav-link orange-link">info@buldak.com</p>
+                                <LayerInViewAnim as="p" scale={0.85} offsetY={18} based="physics" className="nav-link text-black! orange-link cursor-pointer">
+                                    +251978561111
+                                </LayerInViewAnim>
+                                <LayerInViewAnim as="p" scale={0.85} offsetY={18} based="physics" className="nav-link text-black! orange-link cursor-pointer">
+                                    info@buldakdoro.com
+                                </LayerInViewAnim>
                             </div>
                         </div>
                     </div>

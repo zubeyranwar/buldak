@@ -1,20 +1,22 @@
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { cloudStoragePlugin } from "@payloadcms/plugin-cloud-storage";
+import type { HandleDelete, HandleUpload } from "@payloadcms/plugin-cloud-storage/types";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import type { UploadApiResponse } from "cloudinary";
+import { v2 as cloudinary } from "cloudinary";
 import path from "path";
 import { buildConfig } from "payload";
-import { fileURLToPath } from "url";
 import sharp from "sharp";
-import { v2 as cloudinary } from "cloudinary";
-import { cloudStoragePlugin } from "@payloadcms/plugin-cloud-storage";
-import type { HandleUpload, HandleDelete } from "@payloadcms/plugin-cloud-storage/types";
-import type { UploadApiResponse } from "cloudinary";
+import { fileURLToPath } from "url";
 
-import { Users } from "./collections/Users";
-import { Media } from "./collections/Media";
 import { Catagory } from "./collections/Catagory";
+import { FloorPlan } from "./collections/FloorPlan";
+import { Media } from "./collections/Media";
 import { Menu } from "./collections/Menu";
+import { Reservation } from "./collections/Reservation";
+import { TableLayout } from "./collections/TableLayout";
 import { Testimonal } from "./collections/Testimonal";
-import { Table } from "./collections/Table";
+import { Users } from "./collections/Users";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -77,7 +79,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Catagory, Menu, Testimonal, Table],
+  collections: [Users, Media, Catagory, Menu, Testimonal, Reservation, FloorPlan, TableLayout],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

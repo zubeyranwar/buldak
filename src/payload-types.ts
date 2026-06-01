@@ -69,6 +69,12 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    catagory: Catagory;
+    menu: Menu;
+    testimonal: Testimonal;
+    reservation: Reservation;
+    'floor-plan': FloorPlan;
+    'table-layout': TableLayout;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,13 +84,19 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    catagory: CatagorySelect<false> | CatagorySelect<true>;
+    menu: MenuSelect<false> | MenuSelect<true>;
+    testimonal: TestimonalSelect<false> | TestimonalSelect<true>;
+    reservation: ReservationSelect<false> | ReservationSelect<true>;
+    'floor-plan': FloorPlanSelect<false> | FloorPlanSelect<true>;
+    'table-layout': TableLayoutSelect<false> | TableLayoutSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
-    defaultIDType: string;
+    defaultIDType: number;
   };
   fallbackLocale: null;
   globals: {};
@@ -122,7 +134,7 @@ export interface UserAuthOperations {
  * via the `definition` "users".
  */
 export interface User {
-  id: string;
+  id: number;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -147,7 +159,7 @@ export interface User {
  * via the `definition` "media".
  */
 export interface Media {
-  id: string;
+  id: number;
   alt: string;
   updatedAt: string;
   createdAt: string;
@@ -163,10 +175,203 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catagory".
+ */
+export interface Catagory {
+  id: number;
+  name: string;
+  description?: string | null;
+  isDefault?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "menu".
+ */
+export interface Menu {
+  id: number;
+  title: string;
+  description?: string | null;
+  date: string;
+  catagory: number | Catagory;
+  price: number;
+  oldPrice?: number | null;
+  volume?: string | null;
+  label?: string | null;
+  kcal?: number | null;
+  image: number | Media;
+  slug: string;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonal".
+ */
+export interface Testimonal {
+  id: number;
+  /**
+   * TikTok or Instagram post/reel URL
+   */
+  videoUrl: string;
+  /**
+   * Fallback thumbnail shown before embed loads
+   */
+  coverImage?: (number | null) | Media;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reservation".
+ */
+export interface Reservation {
+  id: number;
+  customer: {
+    name: string;
+    phone: string;
+    email?: string | null;
+  };
+  /**
+   * Date and start time of the reservation
+   */
+  reservationDate: string;
+  /**
+   * Expected duration in minutes (default: 90)
+   */
+  duration?: number | null;
+  /**
+   * The specific chairs reserved for this booking
+   */
+  bookedChairs?:
+    | {
+        /**
+         * The table this chair belongs to
+         */
+        table: number | TableLayout;
+        /**
+         * The chair ID within the table (e.g. C1, C2)
+         */
+        chairId: string;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('pending' | 'confirmed' | 'cancelled') | null;
+  /**
+   * Internal notes for staff
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "table-layout".
+ */
+export interface TableLayout {
+  id: number;
+  /**
+   * Auto-generated if left blank
+   */
+  tableNumber?: string | null;
+  /**
+   * Which floor plan this table belongs to
+   */
+  floor?: (number | null) | FloorPlan;
+  type: 'square' | 'round' | 'rectangle';
+  zone?: ('window' | 'main-floor' | 'bar-area' | 'patio' | 'private') | null;
+  /**
+   * Maximum number of seats at this table
+   */
+  capacity?: number | null;
+  position: {
+    x: number;
+    y: number;
+    rotation?: number | null;
+  };
+  width?: number | null;
+  height?: number | null;
+  isActive?: boolean | null;
+  /**
+   * Each chair is a seat at this table. IDs are auto-assigned (C1, C2, …).
+   */
+  chairs?:
+    | {
+        /**
+         * Unique chair ID within this table (e.g. C1). Auto-assigned.
+         */
+        chairId?: string | null;
+        /**
+         * Optional display label (e.g. Window Seat)
+         */
+        seatLabel?: string | null;
+        relativePosition?: {
+          x?: number | null;
+          y?: number | null;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "floor-plan".
+ */
+export interface FloorPlan {
+  id: number;
+  name: string;
+  backgroundImage?: (number | null) | Media;
+  canvasWidth?: number | null;
+  canvasHeight?: number | null;
+  theme?: {
+    /**
+     * Hex or CSS color for table fill
+     */
+    tableFillColor?: string | null;
+    /**
+     * Hex or CSS color for available chairs
+     */
+    chairFillColor?: string | null;
+    /**
+     * Hex or CSS color for text labels
+     */
+    textFillColor?: string | null;
+    /**
+     * Hex or CSS color for selected items
+     */
+    selectionColor?: string | null;
+    /**
+     * Hex or CSS color for booked/unavailable chairs
+     */
+    bookedColor?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: string;
+  id: number;
   key: string;
   data:
     | {
@@ -183,20 +388,44 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: string;
+  id: number;
   document?:
     | ({
         relationTo: 'users';
-        value: string | User;
+        value: number | User;
       } | null)
     | ({
         relationTo: 'media';
-        value: string | Media;
+        value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'catagory';
+        value: number | Catagory;
+      } | null)
+    | ({
+        relationTo: 'menu';
+        value: number | Menu;
+      } | null)
+    | ({
+        relationTo: 'testimonal';
+        value: number | Testimonal;
+      } | null)
+    | ({
+        relationTo: 'reservation';
+        value: number | Reservation;
+      } | null)
+    | ({
+        relationTo: 'floor-plan';
+        value: number | FloorPlan;
+      } | null)
+    | ({
+        relationTo: 'table-layout';
+        value: number | TableLayout;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -206,10 +435,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: string;
+  id: number;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   key?: string | null;
   value?:
@@ -229,7 +458,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: string;
+  id: number;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
@@ -274,6 +503,130 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catagory_select".
+ */
+export interface CatagorySelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  isDefault?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "menu_select".
+ */
+export interface MenuSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  date?: T;
+  catagory?: T;
+  price?: T;
+  oldPrice?: T;
+  volume?: T;
+  label?: T;
+  kcal?: T;
+  image?: T;
+  slug?: T;
+  content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonal_select".
+ */
+export interface TestimonalSelect<T extends boolean = true> {
+  videoUrl?: T;
+  coverImage?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reservation_select".
+ */
+export interface ReservationSelect<T extends boolean = true> {
+  customer?:
+    | T
+    | {
+        name?: T;
+        phone?: T;
+        email?: T;
+      };
+  reservationDate?: T;
+  duration?: T;
+  bookedChairs?:
+    | T
+    | {
+        table?: T;
+        chairId?: T;
+        id?: T;
+      };
+  status?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "floor-plan_select".
+ */
+export interface FloorPlanSelect<T extends boolean = true> {
+  name?: T;
+  backgroundImage?: T;
+  canvasWidth?: T;
+  canvasHeight?: T;
+  theme?:
+    | T
+    | {
+        tableFillColor?: T;
+        chairFillColor?: T;
+        textFillColor?: T;
+        selectionColor?: T;
+        bookedColor?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "table-layout_select".
+ */
+export interface TableLayoutSelect<T extends boolean = true> {
+  tableNumber?: T;
+  floor?: T;
+  type?: T;
+  zone?: T;
+  capacity?: T;
+  position?:
+    | T
+    | {
+        x?: T;
+        y?: T;
+        rotation?: T;
+      };
+  width?: T;
+  height?: T;
+  isActive?: T;
+  chairs?:
+    | T
+    | {
+        chairId?: T;
+        seatLabel?: T;
+        relativePosition?:
+          | T
+          | {
+              x?: T;
+              y?: T;
+            };
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
