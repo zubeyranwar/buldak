@@ -1,11 +1,10 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Undo2, Redo2 } from 'lucide-react'
 
-// ── KonvaCanvas loaded as one dynamic unit ────────────────────────────────────
 const KonvaCanvas = dynamic(() => import('./KonvaCanvas'), {
     ssr: false,
     loading: () => (
@@ -18,8 +17,8 @@ const KonvaCanvas = dynamic(() => import('./KonvaCanvas'), {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface EmbeddedChair {
-    id: string          // Payload array row id
-    chairId: string     // e.g. "C1"
+    id: string
+    chairId: string
     seatLabel?: string
     relativePosition: { x: number; y: number }
 }
@@ -38,6 +37,8 @@ export interface CanvasTable {
     isActive: boolean
     floorId: string | null
     chairs: EmbeddedChair[]
+    _new?: boolean      // pending create
+    _deleted?: boolean  // pending delete
 }
 
 export interface FloorPlanTheme {
@@ -48,7 +49,34 @@ export interface FloorPlanTheme {
     bookedColor: string
 }
 
-// ── Map Payload docs → CanvasTable ────────────────────────────────────────────
+// ── History manager ───────────────────────────────────────────────────────────
+
+class LayoutHistory {
+    private past: CanvasTable[][] = []
+    private future: CanvasTable[][] = []
+
+    push(state: CanvasTable[]) {
+        this.past.push(structuredClone(state))
+        this.future = []   // new action clears redo stack
+    }
+
+    undo(current: CanvasTable[]): CanvasTable[] | null {
+        if (this.past.length === 0) return null
+        this.future.push(structuredClone(current))
+        return this.past.pop()!
+    }
+
+    redo(current: CanvasTable[]): CanvasTable[] | null {
+        if (this.future.length === 0) return null
+        this.past.push(structuredClone(current))
+        return this.future.pop()!
+    }
+
+    canUndo() { return this.past.length > 0 }
+    canRedo() { return this.future.length > 0 }
+}
+
+// ── mapDoc ────────────────────────────────────────────────────────────────────
 
 function mapDoc(t: any): CanvasTable {
     return {
@@ -63,8 +91,9 @@ function mapDoc(t: any): CanvasTable {
         height: t.height ?? 60,
         rotation: t.position?.rotation ?? t.rotation ?? 0,
         isActive: t.isActive ?? true,
-        floorId:
-            typeof t.floor === 'object' ? String(t.floor?.id ?? '') || null : String(t.floor ?? '') || null,
+        floorId: typeof t.floor === 'object'
+            ? String(t.floor?.id ?? '') || null
+            : String(t.floor ?? '') || null,
         chairs: (t.chairs ?? []).map((c: any) => ({
             id: String(c.id),
             chairId: c.chairId ?? '',
@@ -100,7 +129,7 @@ async function apiDelete(id: string): Promise<void> {
     await fetch(`/api/table-layout/${id}`, { method: 'DELETE' })
 }
 
-// ── Default theme ─────────────────────────────────────────────────────────────
+// ── Defaults ──────────────────────────────────────────────────────────────────
 
 const DEFAULT_THEME: FloorPlanTheme = {
     tableFillColor: '#d4a96a',
@@ -110,33 +139,59 @@ const DEFAULT_THEME: FloorPlanTheme = {
     bookedColor: '#ef4444',
 }
 
+let _tmpId = -1
+function tmpId() { return String(_tmpId--) }  // negative = not yet saved
+
+function makeDefaultChairs(count: number, radius: number): EmbeddedChair[] {
+    return Array.from({ length: count }, (_, i) => {
+        const angle = (i / count) * 2 * Math.PI - Math.PI / 2
+        return {
+            id: tmpId(),
+            chairId: `C${i + 1}`,
+            seatLabel: '',
+            relativePosition: {
+                x: Math.round(Math.cos(angle) * radius),
+                y: Math.round(Math.sin(angle) * radius),
+            },
+        }
+    })
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function FloorPlanEditorClient() {
     const [tables, setTables] = useState<CanvasTable[]>([])
     const [floorPlan, setFloorPlan] = useState<{
-        id: string
-        imageUrl: string
-        canvasWidth: number
-        canvasHeight: number
-        theme: FloorPlanTheme
+        id: string; imageUrl: string; canvasWidth: number; canvasHeight: number; theme: FloorPlanTheme
     } | null>(null)
 
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [selectedChairKey, setSelectedChairKey] = useState<string | null>(null)
     const [zoom, setZoom] = useState(1)
-
-    // Loading states per button
-    const [loadingSquare, setLoadingSquare] = useState(false)
-    const [loadingRound, setLoadingRound] = useState(false)
-    const [loadingRect, setLoadingRect] = useState(false)
-    const [loadingChair, setLoadingChair] = useState(false)
-    const [loadingDelete, setLoadingDelete] = useState(false)
     const [loadingSave, setLoadingSave] = useState(false)
-
     const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(null)
 
-    // ── Load floor plan + tables ──────────────────────────────────────────────
+    // Undo/redo — stable ref so it doesn't trigger re-renders
+    const history = useRef(new LayoutHistory())
+    const [canUndo, setCanUndo] = useState(false)
+    const [canRedo, setCanRedo] = useState(false)
 
+    // ── Sync undo/redo flags ──────────────────────────────────────────────────
+    const syncHistory = () => {
+        setCanUndo(history.current.canUndo())
+        setCanRedo(history.current.canRedo())
+    }
+
+    // ── Mutate tables — always push to history first ──────────────────────────
+    const mutate = useCallback((fn: (prev: CanvasTable[]) => CanvasTable[]) => {
+        setTables(prev => {
+            history.current.push(prev)
+            syncHistory()
+            return fn(prev)
+        })
+    }, [])
+
+    // ── Load ──────────────────────────────────────────────────────────────────
     useEffect(() => {
         Promise.all([
             fetch('/api/floor-plan?limit=1&depth=2').then(r => r.json()),
@@ -158,171 +213,127 @@ export function FloorPlanEditorClient() {
                     },
                 })
             }
-            if (tlData.docs) {
-                setTables(tlData.docs.map(mapDoc))
-            }
+            if (tlData.docs) setTables(tlData.docs.map(mapDoc))
         })
     }, [])
 
-    // ── Generate default chairs for a new table ───────────────────────────────
+    // ── Add table (local only — _new flag) ────────────────────────────────────
+    const addTable = (type: 'square' | 'round' | 'rectangle') => {
+        const isRect = type === 'rectangle'
+        const w = isRect ? 90 : 60
+        const h = isRect ? 54 : 60
+        const radius = Math.max(w, h) / 2 + 24
+        const chairCount = isRect ? 6 : 4
 
-    function makeDefaultChairs(count: number, radius: number): Omit<EmbeddedChair, 'id'>[] {
-        return Array.from({ length: count }, (_, i) => {
-            const angle = (i / count) * 2 * Math.PI - Math.PI / 2
-            return {
-                chairId: `C${i + 1}`,
+        const newTable: CanvasTable = {
+            id: tmpId(),
+            tableNumber: '',   // assigned on save
+            type,
+            zone: 'main-floor',
+            capacity: chairCount,
+            x: 200, y: 200,
+            width: w, height: h,
+            rotation: 0,
+            isActive: true,
+            floorId: floorPlan?.id ?? null,
+            chairs: makeDefaultChairs(chairCount, radius),
+            _new: true,
+        }
+
+        mutate(prev => [...prev, newTable])
+        setSelectedId(newTable.id)
+        setSelectedChairKey(null)
+    }
+
+    // ── Add chair to selected table (local only) ──────────────────────────────
+    const addChair = () => {
+        if (!selectedId) { setStatus({ msg: '⚠ Select a table first', ok: false }); return }
+        mutate(prev => prev.map(t => {
+            if (t.id !== selectedId) return t
+            const count = t.chairs.length
+            const angle = (count / (count + 1)) * 2 * Math.PI - Math.PI / 2
+            const radius = Math.max(t.width, t.height) / 2 + 24
+            const newChair: EmbeddedChair = {
+                id: tmpId(),
+                chairId: `C${count + 1}`,
                 seatLabel: '',
                 relativePosition: {
                     x: Math.round(Math.cos(angle) * radius),
                     y: Math.round(Math.sin(angle) * radius),
                 },
             }
-        })
+            return { ...t, chairs: [...t.chairs, newChair], capacity: count + 1 }
+        }))
     }
 
-    // ── Add square table ──────────────────────────────────────────────────────
-
-    const addSquareTable = async () => {
-        setLoadingSquare(true)
-        try {
-            const chairs = makeDefaultChairs(4, 46)
-            const data = await apiPost({
-                type: 'square',
-                zone: 'main-floor',
-                capacity: 4,
-                position: { x: 200, y: 200, rotation: 0 },
-                width: 60, height: 60,
-                isActive: true,
-                floor: floorPlan?.id ?? null,
-                chairs,
-            })
-            if (data.doc) setTables(prev => [...prev, mapDoc(data.doc)])
-        } finally {
-            setLoadingSquare(false)
-        }
+    // ── Delete selected chair (local only) ────────────────────────────────────
+    const deleteChair = () => {
+        if (!selectedChairKey) return
+        const [tableId, chairId] = selectedChairKey.split(':')
+        mutate(prev => prev.map(t => {
+            if (t.id !== tableId) return t
+            const chairs = t.chairs.filter(c => c.chairId !== chairId)
+            return { ...t, chairs, capacity: chairs.length }
+        }))
+        setSelectedChairKey(null)
     }
 
-    // ── Add round table ───────────────────────────────────────────────────────
-
-    const addRoundTable = async () => {
-        setLoadingRound(true)
-        try {
-            const chairs = makeDefaultChairs(4, 46)
-            const data = await apiPost({
-                type: 'round',
-                zone: 'main-floor',
-                capacity: 4,
-                position: { x: 200, y: 200, rotation: 0 },
-                width: 60, height: 60,
-                isActive: true,
-                floor: floorPlan?.id ?? null,
-                chairs,
-            })
-            if (data.doc) setTables(prev => [...prev, mapDoc(data.doc)])
-        } finally {
-            setLoadingRound(false)
-        }
-    }
-
-    // ── Add rectangle table ───────────────────────────────────────────────────
-
-    const addRectTable = async () => {
-        setLoadingRect(true)
-        try {
-            const chairs = makeDefaultChairs(6, 54)
-            const data = await apiPost({
-                type: 'rectangle',
-                zone: 'main-floor',
-                capacity: 6,
-                position: { x: 200, y: 200, rotation: 0 },
-                width: 90, height: 54,
-                isActive: true,
-                floor: floorPlan?.id ?? null,
-                chairs,
-            })
-            if (data.doc) setTables(prev => [...prev, mapDoc(data.doc)])
-        } finally {
-            setLoadingRect(false)
-        }
-    }
-
-    // ── Add chair to selected table ───────────────────────────────────────────
-
-    const addChairToSelected = async () => {
-        if (!selectedId) {
-            setStatus({ msg: '⚠ Select a table first', ok: false })
-            return
-        }
-        const target = tables.find(t => t.id === selectedId)
-        if (!target) return
-
-        setLoadingChair(true)
-        try {
-            const existingCount = target.chairs.length
-            const newIndex = existingCount
-            const totalSlots = existingCount + 1
-            const angle = (newIndex / totalSlots) * 2 * Math.PI - Math.PI / 2
-            const radius = target.width / 2 + 24
-
-            const newChair: Omit<EmbeddedChair, 'id'> = {
-                chairId: `C${existingCount + 1}`,
-                seatLabel: '',
-                relativePosition: {
-                    x: Math.round(Math.cos(angle) * radius),
-                    y: Math.round(Math.sin(angle) * radius),
-                },
-            }
-
-            const updatedChairs = [...target.chairs.map(c => ({
-                chairId: c.chairId,
-                seatLabel: c.seatLabel,
-                relativePosition: c.relativePosition,
-            })), newChair]
-
-            await apiPatch(target.id, {
-                chairs: updatedChairs,
-                capacity: updatedChairs.length,
-            })
-
-            // Re-fetch the table to get Payload-assigned array IDs
-            const res = await fetch(`/api/table-layout/${target.id}?depth=2`)
-            const doc = await res.json()
-            setTables(prev => prev.map(t => t.id === target.id ? mapDoc(doc) : t))
-        } finally {
-            setLoadingChair(false)
-        }
-    }
-
-    // ── Delete selected table ─────────────────────────────────────────────────
-
-    const deleteSelected = async () => {
+    // ── Delete selected table (local only, mark _deleted) ─────────────────────
+    const deleteTable = () => {
         if (!selectedId) return
-        setLoadingDelete(true)
-        try {
-            await apiDelete(selectedId)
-            setTables(prev => prev.filter(t => t.id !== selectedId))
-            setSelectedId(null)
-        } finally {
-            setLoadingDelete(false)
-        }
+        mutate(prev => prev.map(t =>
+            t.id === selectedId ? { ...t, _deleted: true } : t
+        ))
+        setSelectedId(null)
+        setSelectedChairKey(null)
     }
 
-    // ── Save all positions ────────────────────────────────────────────────────
+    // ── Undo ──────────────────────────────────────────────────────────────────
+    const undo = () => {
+        setTables(prev => {
+            const restored = history.current.undo(prev)
+            if (!restored) return prev
+            syncHistory()
+            return restored
+        })
+        setSelectedChairKey(null)
+    }
 
+    // ── Redo ──────────────────────────────────────────────────────────────────
+    const redo = () => {
+        setTables(prev => {
+            const restored = history.current.redo(prev)
+            if (!restored) return prev
+            syncHistory()
+            return restored
+        })
+        setSelectedChairKey(null)
+    }
+
+    // ── Save — flush all pending changes to API ───────────────────────────────
     const saveAll = useCallback(async () => {
         setLoadingSave(true)
         setStatus(null)
         try {
-            await Promise.all(
-                tables.map(t =>
-                    apiPatch(t.id, {
-                        position: {
-                            x: Math.round(t.x),
-                            y: Math.round(t.y),
-                            rotation: Math.round(t.rotation),
-                        },
+            const toDelete = tables.filter(t => t._deleted && !t._new)
+            const toCreate = tables.filter(t => t._new && !t._deleted)
+            const toUpdate = tables.filter(t => !t._new && !t._deleted)
+
+            // 1. Delete
+            await Promise.all(toDelete.map(t => apiDelete(t.id)))
+
+            // 2. Create — get back real IDs from Payload
+            const created: CanvasTable[] = await Promise.all(
+                toCreate.map(async t => {
+                    const data = await apiPost({
+                        type: t.type,
+                        zone: t.zone,
+                        capacity: t.capacity,
+                        position: { x: Math.round(t.x), y: Math.round(t.y), rotation: Math.round(t.rotation) },
                         width: Math.round(t.width),
                         height: Math.round(t.height),
+                        isActive: t.isActive,
+                        floor: t.floorId ?? undefined,
                         chairs: t.chairs.map(c => ({
                             chairId: c.chairId,
                             seatLabel: c.seatLabel ?? '',
@@ -332,110 +343,143 @@ export function FloorPlanEditorClient() {
                             },
                         })),
                     })
-                )
+                    return mapDoc(data.doc)
+                })
             )
+
+            // 3. Update positions/chairs
+            await Promise.all(
+                toUpdate.map(t => apiPatch(t.id, {
+                    position: { x: Math.round(t.x), y: Math.round(t.y), rotation: Math.round(t.rotation) },
+                    width: Math.round(t.width),
+                    height: Math.round(t.height),
+                    chairs: t.chairs.map(c => ({
+                        chairId: c.chairId,
+                        seatLabel: c.seatLabel ?? '',
+                        relativePosition: {
+                            x: Math.round(c.relativePosition.x),
+                            y: Math.round(c.relativePosition.y),
+                        },
+                    })),
+                }))
+            )
+
+            // 4. Rebuild local state with real IDs, remove deleted
+            setTables([
+                ...toUpdate,
+                ...created,
+            ])
+            history.current = new LayoutHistory()
+            syncHistory()
             setStatus({ msg: '✓ Layout saved successfully', ok: true })
-        } catch {
+        } catch (err) {
+            console.error(err)
             setStatus({ msg: 'Save failed — please try again', ok: false })
         } finally {
             setLoadingSave(false)
         }
     }, [tables])
 
-    // ── Handle table drag/resize/rotate from canvas ───────────────────────────
-
+    // ── Canvas onChange (drag / transformer) ──────────────────────────────────
     const handleChange = useCallback((id: string, updated: Partial<CanvasTable>) => {
-        setTables(prev => prev.map(t => (t.id === id ? { ...t, ...updated } : t)))
-    }, [])
+        mutate(prev => prev.map(t => t.id === id ? { ...t, ...updated } : t))
+    }, [mutate])
 
     // ── Derived ───────────────────────────────────────────────────────────────
-
-    const selected = tables.find(t => t.id === selectedId)
+    const visibleTables = tables.filter(t => !t._deleted)
+    const selected = visibleTables.find(t => t.id === selectedId)
     const theme = floorPlan?.theme ?? DEFAULT_THEME
+    const selectedChairTableId = selectedChairKey?.split(':')[0]
+    const selectedChairId = selectedChairKey?.split(':')[1]
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    const pendingCount = tables.filter(t => t._new || t._deleted).length
+    const hasUnsaved = pendingCount > 0 || tables.some(t => !t._new && !t._deleted)
 
     return (
         <div style={{ fontFamily: 'system-ui, sans-serif', paddingBottom: 40 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 14px' }}>
-                Floor Plan Editor
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Floor Plan Editor</h1>
+                {pendingCount > 0 && (
+                    <span style={{
+                        fontSize: 11, padding: '2px 8px',
+                        background: '#fef3c7', border: '1px solid #f59e0b',
+                        borderRadius: 12, color: '#92400e',
+                    }}>
+                        {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''}
+                    </span>
+                )}
+            </div>
 
             {/* ── Toolbar ── */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
-                <Button variant="outline" size="sm" onClick={addSquareTable} disabled={loadingSquare}>
-                    {loadingSquare && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-                    + Square Table
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+                {/* Undo / Redo */}
+                <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+                    <Undo2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+                    <Redo2 className="w-3.5 h-3.5" />
                 </Button>
 
-                <Button variant="outline" size="sm" onClick={addRoundTable} disabled={loadingRound}>
-                    {loadingRound && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-                    + Round Table
-                </Button>
+                <span style={{ width: 1, height: 24, background: '#e5e7eb', display: 'inline-block', margin: '0 2px' }} />
 
-                <Button variant="outline" size="sm" onClick={addRectTable} disabled={loadingRect}>
-                    {loadingRect && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-                    + Rectangle Table
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => addTable('square')}>+ Square</Button>
+                <Button variant="outline" size="sm" onClick={() => addTable('round')}>+ Round</Button>
+                <Button variant="outline" size="sm" onClick={() => addTable('rectangle')}>+ Rectangle</Button>
 
                 {selectedId && (
-                    <Button variant="outline" size="sm" onClick={addChairToSelected} disabled={loadingChair}>
-                        {loadingChair && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-                        + Chair to Selected
+                    <Button variant="outline" size="sm" onClick={addChair}>+ Chair</Button>
+                )}
+
+                {selectedChairKey && (
+                    <Button variant="destructive" size="sm" onClick={deleteChair}>
+                        Delete Chair ({selectedChairId}) ✕
                     </Button>
                 )}
 
-                <Button
-                    variant="outline" size="sm"
-                    onClick={() => setZoom(z => Math.min(2, +(z + 0.1).toFixed(1)))}
-                >
-                    Zoom In 🔍
-                </Button>
-
-                <Button
-                    variant="outline" size="sm"
-                    onClick={() => setZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))}
-                >
-                    Zoom Out 🔍
-                </Button>
-
-                {selectedId && (
-                    <Button variant="destructive" size="sm" onClick={deleteSelected} disabled={loadingDelete}>
-                        {loadingDelete && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                {selectedId && !selectedChairKey && (
+                    <Button variant="destructive" size="sm" onClick={deleteTable}>
                         Delete Table ✕
                     </Button>
                 )}
+
+                <span style={{ width: 1, height: 24, background: '#e5e7eb', display: 'inline-block', margin: '0 2px' }} />
+
+                <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.min(2, +(z + 0.1).toFixed(1)))}>
+                    Zoom In 🔍
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))}>
+                    Zoom Out 🔍
+                </Button>
 
                 <Button
                     size="sm"
                     onClick={saveAll}
                     disabled={loadingSave}
-                    className="bg-green-700 hover:bg-green-800 text-white ml-1"
+                    className="bg-green-700 hover:bg-green-800 text-white ml-auto"
                 >
                     {loadingSave && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
                     {loadingSave ? 'Saving…' : 'Save Layout'}
                 </Button>
 
                 {status && (
-                    <span style={{ fontSize: 13, color: status.ok ? '#15803d' : '#dc2626', maxWidth: 360 }}>
+                    <span style={{ fontSize: 13, color: status.ok ? '#15803d' : '#dc2626' }}>
                         {status.msg}
                     </span>
                 )}
             </div>
 
             {/* ── Canvas ── */}
-            <div style={{
-                border: '1px solid #d1d5db', borderRadius: 8,
-                overflow: 'auto', display: 'inline-block', maxWidth: '100%',
-            }}>
+            <div style={{ border: '1px solid #d1d5db', borderRadius: 8, overflow: 'auto', display: 'inline-block', maxWidth: '100%' }}>
                 {floorPlan ? (
                     <KonvaCanvas
-                        tables={tables}
+                        tables={visibleTables}
                         floorPlan={floorPlan}
                         theme={theme}
                         selectedId={selectedId}
+                        selectedChairKey={selectedChairKey}
                         zoom={zoom}
                         onSelect={setSelectedId}
+                        onSelectChair={setSelectedChairKey}
                         onChange={handleChange}
                     />
                 ) : (
@@ -446,7 +490,7 @@ export function FloorPlanEditorClient() {
                 )}
             </div>
 
-            {/* ── Selected info bar ── */}
+            {/* ── Info bar ── */}
             {selected && (
                 <div style={{
                     marginTop: 10, padding: '9px 14px',
@@ -454,18 +498,45 @@ export function FloorPlanEditorClient() {
                     borderRadius: 8, fontSize: 13,
                     display: 'inline-flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
                 }}>
-                    <strong>Table {selected.tableNumber}</strong>
+                    <strong>Table {selected.tableNumber || '(unsaved)'}</strong>
                     <span style={{ color: '#6b7280' }}>
-                        {selected.type} · {selected.zone || 'no zone'} · {selected.chairs.length} chair(s) · capacity {selected.capacity}
+                        {selected.type} · {selected.chairs.length} chair(s)
+                        {selected._new && <span style={{ color: '#f59e0b', marginLeft: 6 }}>● new</span>}
                     </span>
-                    <span style={{ color: '#6b7280' }}>
-                        x:{Math.round(selected.x)} y:{Math.round(selected.y)} · rot:{Math.round(selected.rotation)}°
-                    </span>
+                    {selectedChairKey && (
+                        <span style={{ color: '#3b82f6', fontWeight: 500 }}>
+                            Chair {selectedChairId} selected — click "Delete Chair" to remove
+                        </span>
+                    )}
                     <span style={{ color: '#9ca3af', fontSize: 12 }}>
-                        drag · handles to resize/rotate · click canvas to deselect
+                        drag to move · handles to resize &amp; rotate · click chair to select it
                     </span>
                 </div>
             )}
+
+            {/* ── Keyboard shortcuts ── */}
+            <KeyboardShortcuts onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo} />
         </div>
     )
+}
+
+// ── Keyboard shortcuts (Ctrl+Z / Ctrl+Y) ─────────────────────────────────────
+
+function KeyboardShortcuts({
+    onUndo, onRedo, canUndo, canRedo,
+}: { onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean }) {
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && canUndo) {
+                e.preventDefault(); onUndo()
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey)) && canRedo) {
+                e.preventDefault(); onRedo()
+            }
+        }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [onUndo, onRedo, canUndo, canRedo])
+    return null
 }
