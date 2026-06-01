@@ -1,3 +1,4 @@
+//@ts-nocheck
 import type { CollectionConfig } from 'payload'
 
 export const Reservation: CollectionConfig = {

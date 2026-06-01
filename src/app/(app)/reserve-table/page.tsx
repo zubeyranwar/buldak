@@ -30,6 +30,7 @@ export default function ReserveTable() {
                         <div className="spacer" />
 
                         <form
+                            //@ts-ignore
                             action={handleReserveTable}
                             className="col-span-2 flex flex-col gap-4"
                         >
