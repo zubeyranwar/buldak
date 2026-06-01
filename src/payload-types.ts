@@ -75,6 +75,7 @@ export interface Config {
     reservation: Reservation;
     'floor-plan': FloorPlan;
     'table-layout': TableLayout;
+    'panorama-view': PanoramaView;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -90,6 +91,7 @@ export interface Config {
     reservation: ReservationSelect<false> | ReservationSelect<true>;
     'floor-plan': FloorPlanSelect<false> | FloorPlanSelect<true>;
     'table-layout': TableLayoutSelect<false> | TableLayoutSelect<true>;
+    'panorama-view': PanoramaViewSelect<false> | PanoramaViewSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -160,7 +162,7 @@ export interface User {
  */
 export interface Media {
   id: number;
-  alt: string;
+  alt?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -234,6 +236,7 @@ export interface Testimonal {
    * Fallback thumbnail shown before embed loads
    */
   coverImage?: (number | null) | Media;
+  handle?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -368,6 +371,64 @@ export interface FloorPlan {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "panorama-view".
+ */
+export interface PanoramaView {
+  id: number;
+  /**
+   * e.g. "Main Restaurant Tour"
+   */
+  name: string;
+  /**
+   * Optional — link to the matching 2D floor plan
+   */
+  linkedFloorPlan?: (number | null) | FloorPlan;
+  /**
+   * Each scene is one 360° panorama photo. Add one per zone/area.
+   */
+  scenes?:
+    | {
+        /**
+         * URL-safe slug, e.g. "main-floor", "patio". Auto-set by editor.
+         */
+        sceneId: string;
+        /**
+         * Display name shown on the scene tab, e.g. "Main Floor"
+         */
+        label: string;
+        /**
+         * Equirectangular 360° photo (JPG/PNG, ideally 4096×2048px)
+         */
+        panoramaImage?: (number | null) | Media;
+        /**
+         * Initial horizontal camera angle when scene loads (-180 → 180)
+         */
+        defaultYaw?: number | null;
+        /**
+         * Initial vertical camera angle when scene loads (-90 → 90)
+         */
+        defaultPitch?: number | null;
+        hotspots?:
+          | {
+              key?: string | null;
+              type?: ('table' | 'navigate') | null;
+              yaw?: number | null;
+              pitch?: number | null;
+              table?: (number | null) | TableLayout;
+              tableNumber?: string | null;
+              targetSceneId?: string | null;
+              targetSceneLabel?: string | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -421,6 +482,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'table-layout';
         value: number | TableLayout;
+      } | null)
+    | ({
+        relationTo: 'panorama-view';
+        value: number | PanoramaView;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -542,6 +607,7 @@ export interface MenuSelect<T extends boolean = true> {
 export interface TestimonalSelect<T extends boolean = true> {
   videoUrl?: T;
   coverImage?: T;
+  handle?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -622,6 +688,39 @@ export interface TableLayoutSelect<T extends boolean = true> {
           | {
               x?: T;
               y?: T;
+            };
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "panorama-view_select".
+ */
+export interface PanoramaViewSelect<T extends boolean = true> {
+  name?: T;
+  linkedFloorPlan?: T;
+  scenes?:
+    | T
+    | {
+        sceneId?: T;
+        label?: T;
+        panoramaImage?: T;
+        defaultYaw?: T;
+        defaultPitch?: T;
+        hotspots?:
+          | T
+          | {
+              key?: T;
+              type?: T;
+              yaw?: T;
+              pitch?: T;
+              table?: T;
+              tableNumber?: T;
+              targetSceneId?: T;
+              targetSceneLabel?: T;
+              id?: T;
             };
         id?: T;
       };

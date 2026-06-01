@@ -4,7 +4,7 @@ export const Testimonal: CollectionConfig = {
     slug: 'testimonal',
     admin: {
         useAsTitle: 'videoUrl',
-        defaultColumns: ['videoUrl', 'coverImage'],
+        defaultColumns: ['videoUrl', 'coverImage', 'handle'],
     },
     access: {
         read: () => true,
@@ -26,5 +26,10 @@ export const Testimonal: CollectionConfig = {
                 description: 'Fallback thumbnail shown before embed loads',
             },
         },
+        {
+            name: 'handle',
+            type: 'text',
+            required: false
+        }
     ],
 }

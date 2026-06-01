@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { DM_Mono } from "next/font/google";
 import localFont from 'next/font/local';
 import "./globals.css";
+import '@photo-sphere-viewer/markers-plugin/index.css'
+import '@photo-sphere-viewer/virtual-tour-plugin/index.css'
 
 export const blackhood = localFont({
   src: '../../../public/fonts/blackhood.ttf',

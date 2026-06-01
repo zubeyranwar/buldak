@@ -22,6 +22,7 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FloorPlanEditorView as FloorPlanEditorView_761e8128e5365f3338865bf8cbdf3191 } from '../../../components/admin/FloorPlanEditorView'
+import { PanoramaEditorView as PanoramaEditorView_c63c10de2d25ea64ac3ec7a88b14375e } from '../../../components/admin/PanoramaEditorView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -50,5 +51,6 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "/components/admin/FloorPlanEditorView#FloorPlanEditorView": FloorPlanEditorView_761e8128e5365f3338865bf8cbdf3191,
+  "/components/admin/PanoramaEditorView#PanoramaEditorView": PanoramaEditorView_c63c10de2d25ea64ac3ec7a88b14375e,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

@@ -24,7 +24,7 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
         align: "center",
         dragFree: false,
         startIndex: 2,
-        
+
     });
 
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -109,6 +109,7 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
 export const TestimonalCard = ({
     coverImage,
     videoUrl,
+    handle: instagramHandle,
     isActive,
 }: Omit<TestimonalDoc, "id"> & { isActive: boolean }) => {
     const platform = detectPlatform(videoUrl);
@@ -181,7 +182,9 @@ export const TestimonalCard = ({
                     </div>
                     {handle && (
                         <span className="text-white text-sm font-medium">
-                            @{platform === "instagram" ? "buldakdoro" : handle}
+                            {platform === "instagram"
+                                ? `@buldakdoro${instagramHandle ? ` & @${instagramHandle}` : ""}`
+                                : `@${handle}`}
                         </span>
                     )}
                 </div>

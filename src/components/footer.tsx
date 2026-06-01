@@ -69,7 +69,7 @@ export const Footer = () => {
 
                             <LayerInViewAnim scale={0.85} offsetY={18} based="physics">
                                 <Link href="/menu" className="nav-link text-primary!">
-                                    Menu <span className="-ml-1 text-[12px]">{17}</span>
+                                    Menu <span className="-ml-1 text-[12px]">{""}</span>
                                 </Link>
                             </LayerInViewAnim>
                         </div>

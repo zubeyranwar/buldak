@@ -29,6 +29,18 @@ importers:
       '@payloadcms/ui':
         specifier: ^3.85.0
         version: 3.85.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@16.2.4(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.84.1(graphql@16.13.2)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+      '@photo-sphere-viewer/autorotate-plugin':
+        specifier: ^5.14.1
+        version: 5.14.1(@photo-sphere-viewer/core@5.14.1)
+      '@photo-sphere-viewer/core':
+        specifier: ^5.14.1
+        version: 5.14.1
+      '@photo-sphere-viewer/markers-plugin':
+        specifier: ^5.14.1
+        version: 5.14.1(@photo-sphere-viewer/core@5.14.1)
+      '@photo-sphere-viewer/virtual-tour-plugin':
+        specifier: ^5.14.1
+        version: 5.14.1(@photo-sphere-viewer/core@5.14.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -68,6 +80,9 @@ importers:
       next:
         specifier: 16.2.4
         version: 16.2.4(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4)
+      pannellum:
+        specifier: ^2.5.7
+        version: 2.5.7
       payload:
         specifier: ^3.84.1
         version: 3.84.1(graphql@16.13.2)(typescript@5.9.3)
@@ -86,6 +101,12 @@ importers:
       react-konva:
         specifier: ^19.2.4
         version: 19.2.4(@types/react@19.2.14)(konva@10.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react-pannellum:
+        specifier: 1.1.2-alpha.1
+        version: 1.1.2-alpha.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react-photo-sphere-viewer:
+        specifier: ^6.2.3
+        version: 6.2.3(@photo-sphere-viewer/core@5.14.1)(prop-types@15.8.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -1456,6 +1477,24 @@ packages:
       payload: 3.85.0
       react: ^19.0.1 || ^19.1.2 || ^19.2.1
       react-dom: ^19.0.1 || ^19.1.2 || ^19.2.1
+
+  '@photo-sphere-viewer/autorotate-plugin@5.14.1':
+    resolution: {integrity: sha512-Iis0SCw6+qPfX9W4fQzGW5be7b4z7CnvEzT69irXQAqOF8Fl86mO9vOutwP4BUbXDSPOyi8yxn3q7wCyAYSrBw==}
+    peerDependencies:
+      '@photo-sphere-viewer/core': 5.14.1
+
+  '@photo-sphere-viewer/core@5.14.1':
+    resolution: {integrity: sha512-qrwUudrX9YZms4c2shlY/H3jUP0oh9FyGEqIDr/95ulNZgKbhQ6C/i8zDQ4j8ooFR4+z5FDORQtGvLgPyX8VCA==}
+
+  '@photo-sphere-viewer/markers-plugin@5.14.1':
+    resolution: {integrity: sha512-tKMrVem19sZFVQwH6IlubEIucDD2EtwxzmWClHCEojM/+ajucuTDvO2N+I6HEqJClBcNsdHAUwA/zyY6MGOu2Q==}
+    peerDependencies:
+      '@photo-sphere-viewer/core': 5.14.1
+
+  '@photo-sphere-viewer/virtual-tour-plugin@5.14.1':
+    resolution: {integrity: sha512-PRRQXoViKAg8g1TfagKJnvLMuuOXnGN9rvWOAs7W7J+knhcAuAenPFUax1Z5FgKli45mo21NspsPf1RV9lJHkQ==}
+    peerDependencies:
+      '@photo-sphere-viewer/core': 5.14.1
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -3194,6 +3233,9 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
+  eventemitter3@5.0.4:
+    resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
+
   expand-tilde@2.0.2:
     resolution: {integrity: sha512-A5EmesHW6rfnZ9ysHQjPdJRni0SRar0tjtG5MNtm9n5TUvsYU8oozprtRD4AqHxcZWWlVuAmQo2nWKfN9oyjTw==}
     engines: {node: '>=0.10.0'}
@@ -4114,6 +4156,9 @@ packages:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
 
+  pannellum@2.5.7:
+    resolution: {integrity: sha512-AHMRYdLPxetwhBg4lO5EgoZ55C/e+wrJF2WaFQIQA18HSVcvLvsdXEjDL7WpD8MPIFwNnH9qoUDsUqP8cF4pgA==}
+
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
@@ -4356,6 +4401,22 @@ packages:
       konva: ^8.0.1 || ^7.2.5 || ^9.0.0 || ^10.0.0
       react: ^19.2.0
       react-dom: ^19.2.0
+
+  react-pannellum@1.1.2-alpha.1:
+    resolution: {integrity: sha512-7mXXCFxzlO6hGbkZ4LsKM9ZM6jPTRNo46tX6qpQ7gIQzdqOC9fMJwc+ysuLXHGQQQfXSWuQt7bIhyv+8/7+GXw==}
+    engines: {node: '>=22.0.0 <23.0.0', npm: '>=10.0.0'}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+
+  react-photo-sphere-viewer@6.2.3:
+    resolution: {integrity: sha512-VzG0aY9CI8OIQjdIoJCjYF1QlnLFpN2pM+zKm1JrpAKQrBZ6B+Uxy94vpVQkGDERgn8FWE0+LIntTgAr60pLyQ==}
+    engines: {node: '>=16', npm: '>=8'}
+    peerDependencies:
+      '@photo-sphere-viewer/core': '>=5.13.1'
+      prop-types: ^15.5.4
+      react: '>=16.0.0'
+      react-dom: '>=16.0.0'
 
   react-reconciler@0.33.0:
     resolution: {integrity: sha512-KetWRytFv1epdpJc3J4G75I4WrplZE5jOL7Yq0p34+OVOKF4Se7WrdIdVC45XsSSmUTlht2FM/fM1FZb1mfQeA==}
@@ -4672,6 +4733,9 @@ packages:
 
   thread-stream@3.1.0:
     resolution: {integrity: sha512-OqyPZ9u96VohAyMfJykzmivOrY2wfMSf3C5TtFJVgN+Hm6aj+voFhlK+kZEIv2FBh1X6Xp3DlnCOfEQ3B2J86A==}
+
+  three@0.179.1:
+    resolution: {integrity: sha512-5y/elSIQbrvKOISxpwXCR4sQqHtGiOI+MKLc3SsBdDXA2hz3Mdp3X59aUp8DyybMa34aeBwbFTpdoLJaUDEWSw==}
 
   tinyglobby@0.2.16:
     resolution: {integrity: sha512-pn99VhoACYR8nFHhxqix+uvsbXineAasWm5ojXoN8xEwK5Kd3/TrhNn1wByuD52UxWRLy8pu+kRMniEi6Eq9Zg==}
@@ -6322,6 +6386,22 @@ snapshots:
       - monaco-editor
       - supports-color
       - typescript
+
+  '@photo-sphere-viewer/autorotate-plugin@5.14.1(@photo-sphere-viewer/core@5.14.1)':
+    dependencies:
+      '@photo-sphere-viewer/core': 5.14.1
+
+  '@photo-sphere-viewer/core@5.14.1':
+    dependencies:
+      three: 0.179.1
+
+  '@photo-sphere-viewer/markers-plugin@5.14.1(@photo-sphere-viewer/core@5.14.1)':
+    dependencies:
+      '@photo-sphere-viewer/core': 5.14.1
+
+  '@photo-sphere-viewer/virtual-tour-plugin@5.14.1(@photo-sphere-viewer/core@5.14.1)':
+    dependencies:
+      '@photo-sphere-viewer/core': 5.14.1
 
   '@pinojs/redact@0.4.0': {}
 
@@ -8267,6 +8347,8 @@ snapshots:
 
   esutils@2.0.3: {}
 
+  eventemitter3@5.0.4: {}
+
   expand-tilde@2.0.2:
     dependencies:
       homedir-polyfill: 1.0.3
@@ -9298,6 +9380,8 @@ snapshots:
     dependencies:
       p-limit: 3.1.0
 
+  pannellum@2.5.7: {}
+
   parent-module@1.0.1:
     dependencies:
       callsites: 3.1.0
@@ -9622,6 +9706,19 @@ snapshots:
       scheduler: 0.27.0
     transitivePeerDependencies:
       - '@types/react'
+
+  react-pannellum@1.1.2-alpha.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  react-photo-sphere-viewer@6.2.3(@photo-sphere-viewer/core@5.14.1)(prop-types@15.8.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      '@photo-sphere-viewer/core': 5.14.1
+      eventemitter3: 5.0.4
+      prop-types: 15.8.1
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   react-reconciler@0.33.0(react@19.2.4):
     dependencies:
@@ -10000,6 +10097,8 @@ snapshots:
   thread-stream@3.1.0:
     dependencies:
       real-require: 0.2.0
+
+  three@0.179.1: {}
 
   tinyglobby@0.2.16:
     dependencies:

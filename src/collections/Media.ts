@@ -9,8 +9,8 @@ export const Media: CollectionConfig = {
     {
       name: 'alt',
       type: 'text',
-      required: true,
-    },
+      required: false,
+    }
   ],
   upload: true,
 }

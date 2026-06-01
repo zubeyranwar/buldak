@@ -1,9 +1,9 @@
 "use client"
 
-import { Turnstile } from '@marsidev/react-turnstile'
+import SeatPickerTabs from '@/components/SeatPickerTabs'
 import { DateTimePicker, PartySizePicker } from '@/components/wheelpicker'
-import { useState, useMemo } from 'react'
-import { FloorPlanPicker } from '@/components/FloorPlanPicker'
+import { Turnstile } from '@marsidev/react-turnstile'
+import { useMemo, useState } from 'react'
 
 export const ReserveTableForm = () => {
     const [datetime, setDatetime] = useState<{ date?: string; time?: string }>({})
@@ -86,7 +86,7 @@ export const ReserveTableForm = () => {
             {/* Floor plan chair picker */}
             <div className="flex flex-col gap-2">
                 <label className="body-low">Choose your seats</label>
-                <FloorPlanPicker
+                <SeatPickerTabs
                     date={datetime.date ?? ''}
                     time={datetime.time ?? ''}
                     duration={90}

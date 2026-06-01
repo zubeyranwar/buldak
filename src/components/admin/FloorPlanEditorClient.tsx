@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { Button } from '@/components/ui/button'
+import { Button } from '@payloadcms/ui'
 import { Loader2, Undo2, Redo2 } from 'lucide-react'
 
 const KonvaCanvas = dynamic(() => import('./KonvaCanvas'), {
@@ -413,46 +413,45 @@ export function FloorPlanEditorClient() {
             {/* ── Toolbar ── */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
                 {/* Undo / Redo */}
-                <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-                    <Undo2 className="w-3.5 h-3.5" />
+                <Button buttonStyle='none' onClick={undo} disabled={!canUndo}>
+                    <Undo2 className="w-2 h-2" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
-                    <Redo2 className="w-3.5 h-3.5" />
+                <Button buttonStyle='none' onClick={redo} disabled={!canRedo}>
+                    <Redo2 className="w-2 h-2" />
                 </Button>
 
                 <span style={{ width: 1, height: 24, background: '#e5e7eb', display: 'inline-block', margin: '0 2px' }} />
 
-                <Button variant="outline" size="sm" onClick={() => addTable('square')}>+ Square</Button>
-                <Button variant="outline" size="sm" onClick={() => addTable('round')}>+ Round</Button>
-                <Button variant="outline" size="sm" onClick={() => addTable('rectangle')}>+ Rectangle</Button>
+                <Button buttonStyle='pill' onClick={() => addTable('square')}>+ Square</Button>
+                <Button buttonStyle='pill' onClick={() => addTable('round')}>+ Round</Button>
+                <Button buttonStyle='pill' onClick={() => addTable('rectangle')}>+ Rectangle</Button>
 
                 {selectedId && (
-                    <Button variant="outline" size="sm" onClick={addChair}>+ Chair</Button>
+                    <Button onClick={addChair}>+ Chair</Button>
                 )}
 
                 {selectedChairKey && (
-                    <Button variant="destructive" size="sm" onClick={deleteChair}>
+                    <Button onClick={deleteChair}>
                         Delete Chair ({selectedChairId}) ✕
                     </Button>
                 )}
 
                 {selectedId && !selectedChairKey && (
-                    <Button variant="destructive" size="sm" onClick={deleteTable}>
+                    <Button onClick={deleteTable}>
                         Delete Table ✕
                     </Button>
                 )}
 
                 <span style={{ width: 1, height: 24, background: '#e5e7eb', display: 'inline-block', margin: '0 2px' }} />
 
-                <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.min(2, +(z + 0.1).toFixed(1)))}>
+                <Button buttonStyle='pill' onClick={() => setZoom(z => Math.min(2, +(z + 0.1).toFixed(1)))}>
                     Zoom In 🔍
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))}>
+                <Button buttonStyle='pill' onClick={() => setZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))}>
                     Zoom Out 🔍
                 </Button>
 
                 <Button
-                    size="sm"
                     onClick={saveAll}
                     disabled={loadingSave}
                     className="bg-green-700 hover:bg-green-800 text-white ml-auto"

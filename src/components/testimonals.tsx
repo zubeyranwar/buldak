@@ -10,6 +10,7 @@ export type TestimonalDoc = {
     quote: string;
     coverImage?: { url: string } | null;
     videoUrl: string;
+    handle?: string;
 }
 
 export const Testimonals = async () => {
