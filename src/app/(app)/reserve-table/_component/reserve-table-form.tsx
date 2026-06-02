@@ -3,25 +3,14 @@
 import SeatPickerTabs from '@/components/SeatPickerTabs'
 import { DateTimePicker, PartySizePicker } from '@/components/wheelpicker'
 import { Turnstile } from '@marsidev/react-turnstile'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 export const ReserveTableForm = () => {
     const [datetime, setDatetime] = useState<{ date?: string; time?: string }>({})
     const [guests, setGuests] = useState(2)
     const [token, setToken] = useState<string | null>(null)
 
-    // Chair selection: a Set of "tableId:chairId" keys
-    const [selectedChairKeys, setSelectedChairKeys] = useState<Set<string>>(new Set())
-
-    // ── Serialize selectedChairKeys → JSON for the hidden input ──────────────
-
-    const bookedChairsJson = useMemo(() => {
-        const arr = [...selectedChairKeys].map(key => {
-            const [table, chairId] = key.split(':')
-            return { table, chairId }
-        })
-        return JSON.stringify(arr)
-    }, [selectedChairKeys])
+    const [selectedTableIds, setSelectedTableIds] = useState<Set<string>>(new Set())
 
     return (
         <>
@@ -83,16 +72,16 @@ export const ReserveTableForm = () => {
                 <DateTimePicker onChange={setDatetime} />
             </div>
 
-            {/* Floor plan chair picker */}
+            {/* Floor plan table picker */}
             <div className="flex flex-col gap-2">
-                <label className="body-low">Choose your seats</label>
+                <label className="body-low">Choose your table</label>
                 <SeatPickerTabs
                     date={datetime.date ?? ''}
                     time={datetime.time ?? ''}
                     duration={90}
                     guests={guests}
-                    selectedChairKeys={selectedChairKeys}
-                    onSelectionChange={setSelectedChairKeys}
+                    selectedTableIds={selectedTableIds}
+                    onSelectionChange={setSelectedTableIds}
                 />
             </div>
 
@@ -100,11 +89,7 @@ export const ReserveTableForm = () => {
             <input type="hidden" name="date" value={datetime.date ?? ''} />
             <input type="hidden" name="time" value={datetime.time ?? ''} />
 
-            {/*
-                bookedChairs: JSON array of { table: string, chairId: string }
-                Parsed in action.ts and sent to Payload as the bookedChairs array.
-            */}
-            <input type="hidden" name="bookedChairs" value={bookedChairsJson} />
+            <input type="hidden" name="reservedTables" value={JSON.stringify([...selectedTableIds])} />
 
             {/* Turnstile */}
             <Turnstile

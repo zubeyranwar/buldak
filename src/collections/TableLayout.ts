@@ -1,10 +1,18 @@
 import type { CollectionConfig } from 'payload'
 
+type ExistingTable = {
+    tableNumber?: string | null
+}
+
+type ChairInput = Record<string, unknown> & {
+    chairId?: string
+}
+
 export const TableLayout: CollectionConfig = {
     slug: 'table-layout',
     admin: {
         useAsTitle: 'tableNumber',
-        defaultColumns: ['tableNumber', 'type', 'capacity', 'floor'],
+        defaultColumns: ['tableNumber', 'type', 'capacity', 'currentChairCount', 'floor'],
         group: 'Restaurant System',
         components: {
             views: {
@@ -27,16 +35,17 @@ export const TableLayout: CollectionConfig = {
                         limit: 1000,
                         depth: 0,
                     })
-                    const max = all.docs.reduce((acc: number, doc: any) => {
+                    const max = all.docs.reduce((acc: number, doc: ExistingTable) => {
                         const n = parseInt(doc.tableNumber ?? '0', 10)
                         return n > acc ? n : acc
                     }, 0)
                     data.tableNumber = String(max + 1)
                 }
 
-                // Auto-assign chair IDs within the chairs array
+                // Keep legacy chair IDs stable if older records still include
+                // visual chairs. Reservations use table capacity, not chairs.
                 if (Array.isArray(data.chairs)) {
-                    data.chairs = data.chairs.map((chair: any, idx: number) => ({
+                    data.chairs = data.chairs.map((chair: ChairInput, idx: number) => ({
                         ...chair,
                         chairId: chair.chairId || `C${idx + 1}`,
                     }))
@@ -88,10 +97,20 @@ export const TableLayout: CollectionConfig = {
         {
             name: 'capacity',
             type: 'number',
-            required: false,
+            required: true,
             defaultValue: 4,
             min: 1,
-            admin: { description: 'Maximum number of seats at this table' },
+            admin: { description: 'Maximum number of guests this table may reserve' },
+        },
+        {
+            name: 'currentChairCount',
+            type: 'number',
+            required: true,
+            defaultValue: 4,
+            min: 0,
+            admin: {
+                description: 'Current physical chair setup. Staff may add chairs up to capacity.',
+            },
         },
 
         // ── Canvas position / dimensions ──────────────────────────────────────
@@ -141,7 +160,7 @@ export const TableLayout: CollectionConfig = {
             type: 'array',
             label: 'Chairs',
             admin: {
-                description: 'Each chair is a seat at this table. IDs are auto-assigned (C1, C2, …).',
+                description: 'Visual/staff setup chairs only. Reservations are based on table capacity.',
             },
             fields: [
                 {

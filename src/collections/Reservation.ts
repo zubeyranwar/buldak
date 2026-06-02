@@ -1,5 +1,21 @@
-//@ts-nocheck
 import type { CollectionConfig } from 'payload'
+
+type RelationshipValue = string | number | { id?: string | number | null } | null | undefined
+type BookedChairValue = { table?: RelationshipValue }
+type ReservationDoc = {
+    id?: string | number
+    reservationDate?: string
+    duration?: number | null
+    reservedTables?: RelationshipValue[] | null
+    bookedChairs?: BookedChairValue[] | null
+}
+
+function relationId(value: RelationshipValue): string | null {
+    if (typeof value === 'object' && value !== null) {
+        return value.id ? String(value.id) : null
+    }
+    return value ? String(value) : null
+}
 
 export const Reservation: CollectionConfig = {
     slug: 'reservation',
@@ -12,11 +28,29 @@ export const Reservation: CollectionConfig = {
         read: () => true,
     },
     hooks: {
-        // ── Prevent double-booking the same chairId at the same time ───────────
+        // ── Prevent double-booking whole tables at the same time ───────────────
         beforeValidate: [
-            async ({ data, req, operation, id }) => {
-                if (!data?.reservationDate || !Array.isArray(data?.bookedChairs)) return data
-                if (data.bookedChairs.length === 0) return data
+            async ({ data, req, operation, originalDoc }) => {
+                if (!data?.reservationDate) return data
+
+                const incomingTableIds = new Set<string>()
+
+                if (Array.isArray(data?.reservedTables)) {
+                    for (const table of data.reservedTables) {
+                        const tableId = relationId(table)
+                        if (tableId) incomingTableIds.add(String(tableId))
+                    }
+                }
+
+                // Backward compatibility: old clients may still submit bookedChairs.
+                if (Array.isArray(data?.bookedChairs)) {
+                    for (const bc of data.bookedChairs) {
+                        const tableId = relationId(bc.table)
+                        if (tableId) incomingTableIds.add(String(tableId))
+                    }
+                }
+
+                if (incomingTableIds.size === 0) return data
 
                 const payload = req.payload
                 const incomingStart = new Date(data.reservationDate).getTime()
@@ -42,11 +76,11 @@ export const Reservation: CollectionConfig = {
                 })
 
                 // Exclude the current doc when updating
-                const others = existing.docs.filter((doc: any) =>
-                    operation === 'update' ? String(doc.id) !== String(id) : true
+                const others = (existing.docs as ReservationDoc[]).filter((doc) =>
+                    operation === 'update' ? String(doc.id) !== String(originalDoc?.id) : true
                 )
 
-                // Build a set of occupied (tableId:chairId) strings for the overlapping period
+                // Build a set of occupied table IDs for the overlapping period
                 const occupied = new Set<string>()
 
                 for (const res of others) {
@@ -54,37 +88,32 @@ export const Reservation: CollectionConfig = {
                     const resDuration = (res.duration ?? 90) * 60 * 1000
                     const resEnd = resStart + resDuration
 
-                    // Check time overlap
                     if (incomingStart < resEnd && incomingEnd > resStart) {
-                        // This reservation overlaps — collect its chairs
+                        if (Array.isArray(res.reservedTables)) {
+                            for (const table of res.reservedTables) {
+                                const tableId = relationId(table)
+                                if (tableId) occupied.add(String(tableId))
+                            }
+                        }
+
+                        // Old reservations still block the whole table.
                         if (Array.isArray(res.bookedChairs)) {
                             for (const bc of res.bookedChairs) {
-                                const tableId =
-                                    typeof bc.table === 'object' ? bc.table?.id : bc.table
-                                if (tableId && bc.chairId) {
-                                    occupied.add(`${tableId}:${bc.chairId}`)
-                                }
+                                const tableId = relationId(bc.table)
+                                if (tableId) occupied.add(String(tableId))
                             }
                         }
                     }
                 }
 
-                // Check incoming chairs against occupied set
                 const conflicts: string[] = []
-                for (const bc of data.bookedChairs) {
-                    const tableId =
-                        typeof bc.table === 'object' ? bc.table?.id : bc.table
-                    if (tableId && bc.chairId) {
-                        const key = `${tableId}:${bc.chairId}`
-                        if (occupied.has(key)) {
-                            conflicts.push(`Chair ${bc.chairId} at table ${tableId}`)
-                        }
-                    }
+                for (const tableId of incomingTableIds) {
+                    if (occupied.has(tableId)) conflicts.push(`Table ${tableId}`)
                 }
 
                 if (conflicts.length > 0) {
                     throw new Error(
-                        `Double-booking conflict: the following seats are already reserved for this time: ${conflicts.join(', ')}`
+                        `Double-booking conflict: the following tables are already reserved for this time: ${conflicts.join(', ')}`
                     )
                 }
 
@@ -143,12 +172,36 @@ export const Reservation: CollectionConfig = {
 
         // ── Booked chairs ─────────────────────────────────────────────────────
         {
+            name: 'partySize',
+            type: 'number',
+            label: 'Party Size',
+            required: true,
+            defaultValue: 2,
+            min: 1,
+            admin: {
+                description: 'Number of guests in this reservation',
+            },
+        },
+        {
+            name: 'reservedTables',
+            type: 'relationship',
+            relationTo: 'table-layout',
+            hasMany: true,
+            label: 'Reserved Tables',
+            required: true,
+            admin: {
+                description: 'Whole table(s) reserved for this party',
+            },
+        },
+
+        // ── Legacy booked chairs ──────────────────────────────────────────────
+        {
             name: 'bookedChairs',
             type: 'array',
-            label: 'Booked Chairs',
+            label: 'Legacy Booked Chairs',
             required: false,
             admin: {
-                description: 'The specific chairs reserved for this booking',
+                description: 'Legacy field. New reservations reserve whole tables instead.',
             },
             fields: [
                 {

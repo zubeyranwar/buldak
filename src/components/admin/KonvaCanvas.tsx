@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react'
 import Konva from 'konva'
-import type { CanvasTable, EmbeddedChair, FloorPlanTheme } from './FloorPlanEditorClient'
+import type { CanvasTable, FloorPlanTheme } from './FloorPlanEditorClient'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -11,19 +11,14 @@ interface KonvaCanvasProps {
     floorPlan: { imageUrl: string; canvasWidth: number; canvasHeight: number }
     theme: FloorPlanTheme
     selectedId: string | null
-    selectedChairKey?: string | null
     zoom: number
     onSelect: (id: string | null) => void
-    onSelectChair?: (key: string | null) => void   // optional — not used in picker
     onChange: (id: string, updated: Partial<CanvasTable>) => void
-    bookedChairKeys?: Set<string>
-    selectedChairKeys?: Set<string>
-    onChairClick?: (tableId: string, chairId: string) => void
+    bookedTableIds?: Set<string>
+    selectedTableIds?: Set<string>
+    onTableClick?: (tableId: string) => void
     readOnly?: boolean
 }
-
-const CHAIR_SIZE = 22
-const CHAIR_HALF = CHAIR_SIZE / 2
 
 // ── Build one table group ─────────────────────────────────────────────────────
 
@@ -31,14 +26,12 @@ function buildTableGroup(
     table: CanvasTable,
     theme: FloorPlanTheme,
     isSelected: boolean,
-    selectedChairKey: string | null,
-    bookedChairKeys: Set<string>,
-    pickerSelectedKeys: Set<string>,
+    bookedTableIds: Set<string>,
+    selectedTableIds: Set<string>,
     readOnly: boolean,
     onSelect: (id: string | null) => void,
-    onSelectChair: (key: string | null) => void,
     onChange: (id: string, updated: Partial<CanvasTable>) => void,
-    onChairClick?: (tableId: string, chairId: string) => void,
+    onTableClick?: (tableId: string) => void,
 ): Konva.Group {
     const group = new Konva.Group({
         id: String(table.id),
@@ -53,7 +46,12 @@ function buildTableGroup(
 
     const hw = table.width / 2
     const hh = table.height / 2
-    const stroke = isSelected ? theme.selectionColor : '#92400e'
+    const isTableBooked = bookedTableIds.has(table.id)
+    const isTableSelected = selectedTableIds.has(table.id)
+    const stroke = isSelected || isTableSelected ? theme.selectionColor : '#92400e'
+    const tableFill = isTableBooked
+        ? theme.bookedColor
+        : isTableSelected ? theme.selectionColor : theme.tableFillColor
 
     // ── Table body ────────────────────────────────────────────────────────────
     const tableShape: Konva.Shape = table.type === 'round'
@@ -61,15 +59,17 @@ function buildTableGroup(
             name: 'tableBody',
             x: 0, y: 0,
             radius: hw,
-            fill: theme.tableFillColor,
-            stroke, strokeWidth: isSelected ? 2.5 : 1.5,
+            fill: tableFill,
+            opacity: isTableSelected ? 0.82 : 1,
+            stroke, strokeWidth: isSelected || isTableSelected ? 2.5 : 1.5,
         })
         : new Konva.Rect({
             name: 'tableBody',
             x: -hw, y: -hh,
             width: table.width, height: table.height,
-            fill: theme.tableFillColor,
-            stroke, strokeWidth: isSelected ? 2.5 : 1.5,
+            fill: tableFill,
+            opacity: isTableSelected ? 0.82 : 1,
+            stroke, strokeWidth: isSelected || isTableSelected ? 2.5 : 1.5,
             cornerRadius: 5,
         })
     group.add(tableShape)
@@ -83,71 +83,15 @@ function buildTableGroup(
         fill: theme.textFillColor, align: 'center',
         listening: false,
     }))
-    if (table.chairs.length > 0) {
+    if (table.capacity > 0) {
         group.add(new Konva.Text({
             x: -hw, y: 4, width: table.width,
-            text: `${table.chairs.length} seats`,
+            text: `${table.currentChairCount} seats`,
             fontSize: 9, fontFamily: 'system-ui, sans-serif',
             fill: theme.textFillColor, align: 'center', opacity: 0.7,
             listening: false,
         }))
     }
-
-    // ── Chairs ────────────────────────────────────────────────────────────────
-    table.chairs.forEach((chair: EmbeddedChair) => {
-        const key = `${table.id}:${chair.chairId}`
-        const isEditorSelected = selectedChairKey === key
-        const isPickerSelected = pickerSelectedKeys.has(key)
-        const isBooked = bookedChairKeys.has(key)
-
-        const fill = isEditorSelected || isPickerSelected
-            ? theme.selectionColor
-            : isBooked ? theme.bookedColor : theme.chairFillColor
-
-        const chairGroup = new Konva.Group({
-            id: `chair-${table.id}-${chair.chairId}`,
-            x: chair.relativePosition.x,
-            y: chair.relativePosition.y,
-        })
-
-        chairGroup.add(new Konva.Rect({
-            x: -CHAIR_HALF, y: -CHAIR_HALF,
-            width: CHAIR_SIZE, height: CHAIR_SIZE,
-            fill,
-            stroke: isEditorSelected ? theme.selectionColor : '#444',
-            strokeWidth: isEditorSelected ? 2 : 1,
-            cornerRadius: 3,
-        }))
-
-        chairGroup.add(new Konva.Text({
-            x: -CHAIR_HALF, y: -CHAIR_HALF,
-            width: CHAIR_SIZE, height: CHAIR_SIZE,
-            text: chair.chairId,
-            fontSize: 7,
-            fontFamily: 'system-ui, sans-serif',
-            fill: '#fff', align: 'center', verticalAlign: 'middle',
-            listening: false,
-        }))
-
-        if (!readOnly) {
-            chairGroup.on('click tap', (e) => {
-                e.cancelBubble = true
-                onSelectChair(isEditorSelected ? null : key)
-                onSelect(table.id)
-            })
-            chairGroup.on('mouseenter', () => { document.body.style.cursor = 'pointer' })
-            chairGroup.on('mouseleave', () => { document.body.style.cursor = 'move' })
-        } else if (onChairClick) {
-            chairGroup.on('click tap', (e) => {
-                e.cancelBubble = true
-                onChairClick(table.id, chair.chairId)
-            })
-            chairGroup.on('mouseenter', () => { document.body.style.cursor = 'pointer' })
-            chairGroup.on('mouseleave', () => { document.body.style.cursor = 'default' })
-        }
-
-        group.add(chairGroup)
-    })
 
     // ── Selection ring ────────────────────────────────────────────────────────
     if (isSelected && !readOnly) {
@@ -172,7 +116,6 @@ function buildTableGroup(
         group.on('click tap', (e) => {
             e.cancelBubble = true
             onSelect(table.id)
-            onSelectChair(null)
         })
         group.on('mouseenter', () => {
             if (!group.isDragging()) document.body.style.cursor = 'move'
@@ -181,7 +124,8 @@ function buildTableGroup(
     } else {
         group.on('click tap', (e) => {
             e.cancelBubble = true
-            onSelect(table.id)
+            if (onTableClick) onTableClick(table.id)
+            else onSelect(table.id)
         })
     }
 
@@ -225,19 +169,6 @@ function attachTransformer(
     // Disable drag on the group while transforming to prevent position fighting
     tr.on('transformstart', () => { group.draggable(false) })
 
-    // Counter-scale chairs during live transform so they don't stretch visually
-    tr.on('transform', () => {
-        const sx = group.scaleX() || 1
-        const sy = group.scaleY() || 1
-        group.getChildren().forEach(child => {
-            // Only counter-scale chair groups (id starts with 'chair-')
-            if (child.id().startsWith('chair-')) {
-                child.scaleX(1 / sx)
-                child.scaleY(1 / sy)
-            }
-        })
-    })
-
     tr.on('transformend', () => {
         group.draggable(true)
 
@@ -253,35 +184,12 @@ function attachTransformer(
         group.width(newW)
         group.height(newH)
 
-        // Reset any counter-scaling applied during live transform
-        group.getChildren().forEach(child => {
-            if (child.id().startsWith('chair-')) {
-                child.scaleX(1)
-                child.scaleY(1)
-            }
-        })
-
-        // Redistribute chairs evenly around the new table edge
-        const radius = Math.max(newW, newH) / 2 + 24
-        const count = table.chairs.length
-        const updatedChairs = table.chairs.map((c, i) => {
-            const angle = (i / count) * 2 * Math.PI - Math.PI / 2
-            return {
-                ...c,
-                relativePosition: {
-                    x: Math.round(Math.cos(angle) * radius),
-                    y: Math.round(Math.sin(angle) * radius),
-                },
-            }
-        })
-
         onChange(table.id, {
             x: Math.round(group.x()),
             y: Math.round(group.y()),
             rotation: Math.round(group.rotation()),
             width: newW,
             height: newH,
-            chairs: updatedChairs,
         })
     })
 
@@ -295,14 +203,12 @@ export default function KonvaCanvas({
     floorPlan,
     theme,
     selectedId,
-    selectedChairKey = null,
     zoom,
     onSelect,
-    onSelectChair,
     onChange,
-    bookedChairKeys = new Set(),
-    selectedChairKeys = new Set(),
-    onChairClick,
+    bookedTableIds = new Set(),
+    selectedTableIds = new Set(),
+    onTableClick,
     readOnly = false,
 }: KonvaCanvasProps) {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -312,13 +218,11 @@ export default function KonvaCanvas({
 
     // ── Stable callback refs — never change identity, always call latest fn ──
     const onSelectRef = useRef(onSelect)
-    const onSelectChairRef = useRef<(k: string | null) => void>(onSelectChair ?? (() => { }))
     const onChangeRef = useRef(onChange)
-    const onChairClickRef = useRef(onChairClick)
+    const onTableClickRef = useRef(onTableClick)
     useEffect(() => { onSelectRef.current = onSelect }, [onSelect])
-    useEffect(() => { onSelectChairRef.current = onSelectChair ?? (() => { }) }, [onSelectChair])
     useEffect(() => { onChangeRef.current = onChange }, [onChange])
-    useEffect(() => { onChairClickRef.current = onChairClick }, [onChairClick])
+    useEffect(() => { onTableClickRef.current = onTableClick }, [onTableClick])
 
     // ── Init stage once ───────────────────────────────────────────────────────
     useEffect(() => {
@@ -362,7 +266,6 @@ export default function KonvaCanvas({
         stage.on('click tap', (e) => {
             if (e.target === stage) {
                 onSelectRef.current(null)
-                onSelectChairRef.current(null)
             }
         })
 
@@ -372,7 +275,6 @@ export default function KonvaCanvas({
             layerRef.current = null
             bgLayerRef.current = null
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [floorPlan.imageUrl, floorPlan.canvasWidth, floorPlan.canvasHeight])
 
     // ── Rebuild layer on any data change ──────────────────────────────────────
@@ -385,9 +287,8 @@ export default function KonvaCanvas({
         tables.forEach(table => {
             const isSelected = table.id === selectedId
             const group = buildTableGroup(
-                table, theme, isSelected, selectedChairKey,
-                bookedChairKeys, selectedChairKeys,
-                readOnly, onSelectRef.current, onSelectChairRef.current, onChangeRef.current, onChairClickRef.current,
+                table, theme, isSelected, bookedTableIds, selectedTableIds,
+                readOnly, onSelectRef.current, onChangeRef.current, onTableClickRef.current,
             )
             layer.add(group)
 
@@ -397,8 +298,7 @@ export default function KonvaCanvas({
         })
 
         layer.batchDraw()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tables, selectedId, selectedChairKey, theme, bookedChairKeys, selectedChairKeys, readOnly])  // callbacks via refs — stable
+    }, [tables, selectedId, theme, bookedTableIds, selectedTableIds, readOnly])  // callbacks via refs — stable
 
     // ── Zoom ──────────────────────────────────────────────────────────────────
     useEffect(() => {

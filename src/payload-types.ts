@@ -260,7 +260,15 @@ export interface Reservation {
    */
   duration?: number | null;
   /**
-   * The specific chairs reserved for this booking
+   * Number of guests in this reservation
+   */
+  partySize: number;
+  /**
+   * Whole table(s) reserved for this party
+   */
+  reservedTables: (number | TableLayout)[];
+  /**
+   * Legacy field. New reservations reserve whole tables instead.
    */
   bookedChairs?:
     | {
@@ -300,9 +308,13 @@ export interface TableLayout {
   type: 'square' | 'round' | 'rectangle';
   zone?: ('window' | 'main-floor' | 'bar-area' | 'patio' | 'private') | null;
   /**
-   * Maximum number of seats at this table
+   * Maximum number of guests this table may reserve
    */
-  capacity?: number | null;
+  capacity: number;
+  /**
+   * Current physical chair setup. Staff may add chairs up to capacity.
+   */
+  currentChairCount: number;
   position: {
     x: number;
     y: number;
@@ -312,7 +324,7 @@ export interface TableLayout {
   height?: number | null;
   isActive?: boolean | null;
   /**
-   * Each chair is a seat at this table. IDs are auto-assigned (C1, C2, …).
+   * Visual/staff setup chairs only. Reservations are based on table capacity.
    */
   chairs?:
     | {
@@ -362,7 +374,7 @@ export interface FloorPlan {
      */
     selectionColor?: string | null;
     /**
-     * Hex or CSS color for booked/unavailable chairs
+     * Hex or CSS color for booked/unavailable tables
      */
     bookedColor?: string | null;
   };
@@ -625,6 +637,8 @@ export interface ReservationSelect<T extends boolean = true> {
       };
   reservationDate?: T;
   duration?: T;
+  partySize?: T;
+  reservedTables?: T;
   bookedChairs?:
     | T
     | {
@@ -668,6 +682,7 @@ export interface TableLayoutSelect<T extends boolean = true> {
   type?: T;
   zone?: T;
   capacity?: T;
+  currentChairCount?: T;
   position?:
     | T
     | {

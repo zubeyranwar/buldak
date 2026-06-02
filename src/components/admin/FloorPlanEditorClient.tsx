@@ -4,6 +4,15 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@payloadcms/ui'
 import { Loader2, Undo2, Redo2 } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import { Button as UiButton } from '@/components/ui/button'
 
 const KonvaCanvas = dynamic(() => import('./KonvaCanvas'), {
     ssr: false,
@@ -29,6 +38,7 @@ export interface CanvasTable {
     type: 'square' | 'round' | 'rectangle'
     zone: string
     capacity: number
+    currentChairCount: number
     x: number
     y: number
     width: number
@@ -47,6 +57,38 @@ export interface FloorPlanTheme {
     textFillColor: string
     selectionColor: string
     bookedColor: string
+}
+
+type TableDoc = {
+    id: string | number
+    tableNumber?: string | null
+    type?: CanvasTable['type'] | null
+    zone?: string | null
+    capacity?: number | null
+    currentChairCount?: number | null
+    position?: { x?: number | null; y?: number | null; rotation?: number | null } | null
+    xPos?: number | null
+    yPos?: number | null
+    rotation?: number | null
+    width?: number | null
+    height?: number | null
+    isActive?: boolean | null
+    floor?: string | number | { id?: string | number | null } | null
+    chairs?: ChairDoc[] | null
+}
+
+type ChairDoc = {
+    id?: string | number | null
+    chairId?: string | null
+    seatLabel?: string | null
+    relativePosition?: { x?: number | null; y?: number | null } | null
+}
+
+function relationId(value: TableDoc['floor']) {
+    if (typeof value === 'object' && value !== null) {
+        return value.id ? String(value.id) : ''
+    }
+    return value ? String(value) : ''
 }
 
 // ── History manager ───────────────────────────────────────────────────────────
@@ -78,23 +120,22 @@ class LayoutHistory {
 
 // ── mapDoc ────────────────────────────────────────────────────────────────────
 
-function mapDoc(t: any): CanvasTable {
+function mapDoc(t: TableDoc): CanvasTable {
     return {
         id: String(t.id),
         tableNumber: t.tableNumber ?? '',
         type: t.type ?? 'square',
         zone: t.zone ?? '',
         capacity: t.capacity ?? 4,
+        currentChairCount: t.currentChairCount ?? t.chairs?.length ?? t.capacity ?? 4,
         x: t.position?.x ?? t.xPos ?? 100,
         y: t.position?.y ?? t.yPos ?? 100,
         width: t.width ?? 60,
         height: t.height ?? 60,
         rotation: t.position?.rotation ?? t.rotation ?? 0,
         isActive: t.isActive ?? true,
-        floorId: typeof t.floor === 'object'
-            ? String(t.floor?.id ?? '') || null
-            : String(t.floor ?? '') || null,
-        chairs: (t.chairs ?? []).map((c: any) => ({
+        floorId: relationId(t.floor) || null,
+        chairs: (t.chairs ?? []).map((c) => ({
             id: String(c.id),
             chairId: c.chairId ?? '',
             seatLabel: c.seatLabel ?? '',
@@ -108,7 +149,7 @@ function mapDoc(t: any): CanvasTable {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
-async function apiPost(body: Record<string, unknown>): Promise<any> {
+async function apiPost(body: Record<string, unknown>): Promise<{ doc: TableDoc }> {
     const res = await fetch('/api/table-layout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,21 +183,6 @@ const DEFAULT_THEME: FloorPlanTheme = {
 let _tmpId = -1
 function tmpId() { return String(_tmpId--) }  // negative = not yet saved
 
-function makeDefaultChairs(count: number, radius: number): EmbeddedChair[] {
-    return Array.from({ length: count }, (_, i) => {
-        const angle = (i / count) * 2 * Math.PI - Math.PI / 2
-        return {
-            id: tmpId(),
-            chairId: `C${i + 1}`,
-            seatLabel: '',
-            relativePosition: {
-                x: Math.round(Math.cos(angle) * radius),
-                y: Math.round(Math.sin(angle) * radius),
-            },
-        }
-    })
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function FloorPlanEditorClient() {
@@ -166,10 +192,14 @@ export function FloorPlanEditorClient() {
     } | null>(null)
 
     const [selectedId, setSelectedId] = useState<string | null>(null)
-    const [selectedChairKey, setSelectedChairKey] = useState<string | null>(null)
     const [zoom, setZoom] = useState(1)
     const [loadingSave, setLoadingSave] = useState(false)
     const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(null)
+    const [settingsOpen, setSettingsOpen] = useState(false)
+    const [settingsMode, setSettingsMode] = useState<'add' | 'edit'>('add')
+    const [settingsTableType, setSettingsTableType] = useState<CanvasTable['type']>('square')
+    const [editingTableId, setEditingTableId] = useState<string | null>(null)
+    const [seatDraft, setSeatDraft] = useState({ currentChairCount: '2', capacity: '2' })
 
     // Undo/redo — stable ref so it doesn't trigger re-renders
     const history = useRef(new LayoutHistory())
@@ -217,65 +247,72 @@ export function FloorPlanEditorClient() {
         })
     }, [])
 
+    const openAddTableDialog = (type: CanvasTable['type']) => {
+        setSettingsMode('add')
+        setSettingsTableType(type)
+        setEditingTableId(null)
+        setSeatDraft({ currentChairCount: '2', capacity: '2' })
+        setSettingsOpen(true)
+    }
+
+    const openEditTableDialog = useCallback((tableId: string) => {
+        const table = tables.find(t => t.id === tableId && !t._deleted)
+        if (!table) return
+        setSelectedId(table.id)
+        setSettingsMode('edit')
+        setSettingsTableType(table.type)
+        setEditingTableId(table.id)
+        setSeatDraft({
+            currentChairCount: String(table.currentChairCount),
+            capacity: String(table.capacity),
+        })
+        setSettingsOpen(true)
+    }, [tables])
+
+    const closeSettingsDialog = () => {
+        setSettingsOpen(false)
+        setEditingTableId(null)
+    }
+
     // ── Add table (local only — _new flag) ────────────────────────────────────
-    const addTable = (type: 'square' | 'round' | 'rectangle') => {
+    const addTable = (type: 'square' | 'round' | 'rectangle', currentChairCount: number, capacity: number) => {
         const isRect = type === 'rectangle'
         const w = isRect ? 90 : 60
         const h = isRect ? 54 : 60
-        const radius = Math.max(w, h) / 2 + 24
-        const chairCount = isRect ? 6 : 4
 
         const newTable: CanvasTable = {
             id: tmpId(),
             tableNumber: '',   // assigned on save
             type,
             zone: 'main-floor',
-            capacity: chairCount,
+            capacity,
+            currentChairCount,
             x: 200, y: 200,
             width: w, height: h,
             rotation: 0,
             isActive: true,
             floorId: floorPlan?.id ?? null,
-            chairs: makeDefaultChairs(chairCount, radius),
+            chairs: [],
             _new: true,
         }
 
         mutate(prev => [...prev, newTable])
         setSelectedId(newTable.id)
-        setSelectedChairKey(null)
     }
 
-    // ── Add chair to selected table (local only) ──────────────────────────────
-    const addChair = () => {
-        if (!selectedId) { setStatus({ msg: '⚠ Select a table first', ok: false }); return }
-        mutate(prev => prev.map(t => {
-            if (t.id !== selectedId) return t
-            const count = t.chairs.length
-            const angle = (count / (count + 1)) * 2 * Math.PI - Math.PI / 2
-            const radius = Math.max(t.width, t.height) / 2 + 24
-            const newChair: EmbeddedChair = {
-                id: tmpId(),
-                chairId: `C${count + 1}`,
-                seatLabel: '',
-                relativePosition: {
-                    x: Math.round(Math.cos(angle) * radius),
-                    y: Math.round(Math.sin(angle) * radius),
-                },
-            }
-            return { ...t, chairs: [...t.chairs, newChair], capacity: count + 1 }
-        }))
-    }
+    const saveTableSettings = () => {
+        const currentChairCount = Math.max(0, Number(seatDraft.currentChairCount) || 0)
+        const capacity = Math.max(1, Number(seatDraft.capacity) || 1, currentChairCount)
 
-    // ── Delete selected chair (local only) ────────────────────────────────────
-    const deleteChair = () => {
-        if (!selectedChairKey) return
-        const [tableId, chairId] = selectedChairKey.split(':')
-        mutate(prev => prev.map(t => {
-            if (t.id !== tableId) return t
-            const chairs = t.chairs.filter(c => c.chairId !== chairId)
-            return { ...t, chairs, capacity: chairs.length }
-        }))
-        setSelectedChairKey(null)
+        if (settingsMode === 'add') {
+            addTable(settingsTableType, currentChairCount, capacity)
+        } else if (editingTableId) {
+            mutate(prev => prev.map(t =>
+                t.id === editingTableId ? { ...t, currentChairCount, capacity, chairs: [] } : t
+            ))
+        }
+
+        closeSettingsDialog()
     }
 
     // ── Delete selected table (local only, mark _deleted) ─────────────────────
@@ -285,7 +322,6 @@ export function FloorPlanEditorClient() {
             t.id === selectedId ? { ...t, _deleted: true } : t
         ))
         setSelectedId(null)
-        setSelectedChairKey(null)
     }
 
     // ── Undo ──────────────────────────────────────────────────────────────────
@@ -296,7 +332,6 @@ export function FloorPlanEditorClient() {
             syncHistory()
             return restored
         })
-        setSelectedChairKey(null)
     }
 
     // ── Redo ──────────────────────────────────────────────────────────────────
@@ -307,7 +342,6 @@ export function FloorPlanEditorClient() {
             syncHistory()
             return restored
         })
-        setSelectedChairKey(null)
     }
 
     // ── Save — flush all pending changes to API ───────────────────────────────
@@ -329,21 +363,15 @@ export function FloorPlanEditorClient() {
                         type: t.type,
                         zone: t.zone,
                         capacity: t.capacity,
+                        currentChairCount: t.currentChairCount,
                         position: { x: Math.round(t.x), y: Math.round(t.y), rotation: Math.round(t.rotation) },
                         width: Math.round(t.width),
                         height: Math.round(t.height),
                         isActive: t.isActive,
                         floor: t.floorId ?? undefined,
-                        chairs: t.chairs.map(c => ({
-                            chairId: c.chairId,
-                            seatLabel: c.seatLabel ?? '',
-                            relativePosition: {
-                                x: Math.round(c.relativePosition.x),
-                                y: Math.round(c.relativePosition.y),
-                            },
-                        })),
+                        chairs: [],
                     })
-                    return mapDoc(data.doc)
+                    return mapDoc(data.doc as TableDoc)
                 })
             )
 
@@ -351,16 +379,11 @@ export function FloorPlanEditorClient() {
             await Promise.all(
                 toUpdate.map(t => apiPatch(t.id, {
                     position: { x: Math.round(t.x), y: Math.round(t.y), rotation: Math.round(t.rotation) },
+                    capacity: t.capacity,
+                    currentChairCount: t.currentChairCount,
                     width: Math.round(t.width),
                     height: Math.round(t.height),
-                    chairs: t.chairs.map(c => ({
-                        chairId: c.chairId,
-                        seatLabel: c.seatLabel ?? '',
-                        relativePosition: {
-                            x: Math.round(c.relativePosition.x),
-                            y: Math.round(c.relativePosition.y),
-                        },
-                    })),
+                    chairs: [],
                 }))
             )
 
@@ -385,15 +408,19 @@ export function FloorPlanEditorClient() {
         mutate(prev => prev.map(t => t.id === id ? { ...t, ...updated } : t))
     }, [mutate])
 
+    const handleCanvasSelect = (id: string | null) => {
+        if (!id) {
+            setSelectedId(null)
+            return
+        }
+        openEditTableDialog(id)
+    }
+
     // ── Derived ───────────────────────────────────────────────────────────────
     const visibleTables = tables.filter(t => !t._deleted)
-    const selected = visibleTables.find(t => t.id === selectedId)
     const theme = floorPlan?.theme ?? DEFAULT_THEME
-    const selectedChairTableId = selectedChairKey?.split(':')[0]
-    const selectedChairId = selectedChairKey?.split(':')[1]
 
     const pendingCount = tables.filter(t => t._new || t._deleted).length
-    const hasUnsaved = pendingCount > 0 || tables.some(t => !t._new && !t._deleted)
 
     return (
         <div style={{ fontFamily: 'system-ui, sans-serif', paddingBottom: 40 }}>
@@ -422,21 +449,11 @@ export function FloorPlanEditorClient() {
 
                 <span style={{ width: 1, height: 24, background: '#e5e7eb', display: 'inline-block', margin: '0 2px' }} />
 
-                <Button buttonStyle='pill' onClick={() => addTable('square')}>+ Square</Button>
-                <Button buttonStyle='pill' onClick={() => addTable('round')}>+ Round</Button>
-                <Button buttonStyle='pill' onClick={() => addTable('rectangle')}>+ Rectangle</Button>
+                <Button buttonStyle='pill' onClick={() => openAddTableDialog('square')}>+ Square</Button>
+                <Button buttonStyle='pill' onClick={() => openAddTableDialog('round')}>+ Round</Button>
+                <Button buttonStyle='pill' onClick={() => openAddTableDialog('rectangle')}>+ Rectangle</Button>
 
                 {selectedId && (
-                    <Button onClick={addChair}>+ Chair</Button>
-                )}
-
-                {selectedChairKey && (
-                    <Button onClick={deleteChair}>
-                        Delete Chair ({selectedChairId}) ✕
-                    </Button>
-                )}
-
-                {selectedId && !selectedChairKey && (
                     <Button onClick={deleteTable}>
                         Delete Table ✕
                     </Button>
@@ -475,10 +492,8 @@ export function FloorPlanEditorClient() {
                         floorPlan={floorPlan}
                         theme={theme}
                         selectedId={selectedId}
-                        selectedChairKey={selectedChairKey}
                         zoom={zoom}
-                        onSelect={setSelectedId}
-                        onSelectChair={setSelectedChairKey}
+                        onSelect={handleCanvasSelect}
                         onChange={handleChange}
                     />
                 ) : (
@@ -489,29 +504,76 @@ export function FloorPlanEditorClient() {
                 )}
             </div>
 
-            {/* ── Info bar ── */}
-            {selected && (
-                <div style={{
-                    marginTop: 10, padding: '9px 14px',
-                    background: '#f9fafb', border: '1px solid #e5e7eb',
-                    borderRadius: 8, fontSize: 13,
-                    display: 'inline-flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
-                }}>
-                    <strong>Table {selected.tableNumber || '(unsaved)'}</strong>
-                    <span style={{ color: '#6b7280' }}>
-                        {selected.type} · {selected.chairs.length} chair(s)
-                        {selected._new && <span style={{ color: '#f59e0b', marginLeft: 6 }}>● new</span>}
-                    </span>
-                    {selectedChairKey && (
-                        <span style={{ color: '#3b82f6', fontWeight: 500 }}>
-                            Chair {selectedChairId} selected — click "Delete Chair" to remove
-                        </span>
-                    )}
-                    <span style={{ color: '#9ca3af', fontSize: 12 }}>
-                        drag to move · handles to resize &amp; rotate · click chair to select it
-                    </span>
-                </div>
-            )}
+            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <DialogContent
+                    style={{
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: 'min(420px, calc(100vw - 32px))',
+                        zIndex: 2147483647,
+                        display: 'grid',
+                        gap: 16,
+                        padding: 20,
+                        borderRadius: 10,
+                        border: '1px solid #d1d5db',
+                        background: '#fff',
+                        color: '#111827',
+                        boxShadow: '0 24px 64px rgba(15, 23, 42, 0.24)',
+                        fontFamily: 'system-ui, sans-serif',
+                    }}
+                >
+                    <DialogHeader>
+                        <DialogTitle>{settingsMode === 'add' ? 'Add table' : 'Edit table'}</DialogTitle>
+                        <DialogDescription>
+                            Set the current seats and reservation capacity for this table.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div style={{ display: 'grid', gap: 12 }}>
+                        <label style={{ display: 'grid', gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>Current seats</span>
+                            <input
+                                type="number"
+                                min={0}
+                                value={seatDraft.currentChairCount}
+                                onChange={(e) => setSeatDraft(prev => ({ ...prev, currentChairCount: e.target.value }))}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: 6,
+                                }}
+                            />
+                        </label>
+                        <label style={{ display: 'grid', gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>Max capacity</span>
+                            <input
+                                type="number"
+                                min={1}
+                                value={seatDraft.capacity}
+                                onChange={(e) => setSeatDraft(prev => ({ ...prev, capacity: e.target.value }))}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: 6,
+                                }}
+                            />
+                        </label>
+                    </div>
+
+                    <DialogFooter style={{ display: "flex", gap: 4 }}>
+                        <Button type="button" buttonStyle="secondary" onClick={closeSettingsDialog}>
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={saveTableSettings}>
+                            {settingsMode === 'add' ? 'Add table' : 'Save changes'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* ── Keyboard shortcuts ── */}
             <KeyboardShortcuts onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo} />

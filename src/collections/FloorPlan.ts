@@ -66,7 +66,7 @@ export const FloorPlan: CollectionConfig = {
                     name: 'bookedColor',
                     type: 'text',
                     defaultValue: '#ef4444',
-                    admin: { description: 'Hex or CSS color for booked/unavailable chairs' },
+                    admin: { description: 'Hex or CSS color for booked/unavailable tables' },
                 },
             ],
         },
