@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import type { PanoramaHotspot, HotspotStatus } from '../components/admin/PhotoSphereViewer'
+import { resolveDate, resolveTime, toSlotMs } from '@/lib/timezone'
 
 const PhotoSphereViewer = dynamic(() => import('../components/admin/PhotoSphereViewer'), {
     ssr: false,
@@ -61,36 +62,11 @@ const STATUS_COLOR: Record<HotspotStatus, string> = {
  * Resolves human-friendly date labels like "Today" / "Tomorrow" into
  * "YYYY-MM-DD". Already-formatted dates pass through unchanged.
  */
-function resolveDate(raw: string): string {
-    const lower = raw.trim().toLowerCase()
-    if (lower === 'today') {
-        const now = new Date()
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    }
-    if (lower === 'tomorrow') {
-        const d = new Date()
-        d.setDate(d.getDate() + 1)
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    }
-    return raw.trim()
-}
 
 /**
  * Normalises "7:00 PM" → "19:00" and passes through "19:00" / "07:00"
  * unchanged. Matches the exact logic used in FloorPlanPicker.
  */
-function resolveTime(raw: string): string {
-    const ampm = raw.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-    if (ampm) {
-        let h = parseInt(ampm[1], 10)
-        const m = ampm[2]
-        const meridiem = ampm[3].toUpperCase()
-        if (meridiem === 'AM' && h === 12) h = 0
-        if (meridiem === 'PM' && h !== 12) h += 12
-        return `${String(h).padStart(2, '0')}:${m}`
-    }
-    return raw.trim()
-}
 
 // ── Chair Picker Panel ────────────────────────────────────────────────────────
 
@@ -236,18 +212,14 @@ export function PanoramaBookingPicker({ date, time, duration = 90, guests, selec
     const fetchAvailability = async (forDate: string, forTime: string, dur: number, tableMapOverride?: Record<string, TableInfo>) => {
         setAvailLoading(true)
         try {
-            const resolvedDate = resolveDate(forDate)
-            const resolvedTime = resolveTime(forTime)
-
-            const dt = new Date(`${resolvedDate}T${resolvedTime}:00`)
-            if (isNaN(dt.getTime())) {
-                console.warn('[PanoramaBookingPicker] invalid date/time after resolve:', resolvedDate, resolvedTime)
+            const slotStartMs = toSlotMs(forDate, forTime)
+            if (slotStartMs === null) {
+                console.warn('[PanoramaBookingPicker] invalid date/time:', forDate, forTime)
                 return
             }
-
-            const slotStart = dt.getTime()
+            const slotStart = slotStartMs
             const slotEnd = slotStart + dur * 60 * 1000
-            console.log('[PanoramaBookingPicker] checking slot', dt.toISOString(), '→', new Date(slotEnd).toISOString())
+            console.log('[PanoramaBookingPicker] slot UTC:', new Date(slotStart).toISOString(), '→', new Date(slotEnd).toISOString())
 
             // ── Same fetch as FloorPlanPicker — all non-cancelled reservations ──
             const res = await fetch(`/api/reservation?where[status][not_equals]=cancelled&limit=500&depth=1`)
@@ -501,7 +473,7 @@ export function PanoramaBookingPicker({ date, time, duration = 90, guests, selec
                 )}
             </div>
 
-            {/* Summary */}
+            {/* Summary
             <div style={{ marginTop: 10, padding: '8px 12px', background: totalSelected > 0 ? '#a8c5a010' : '#f9fafb', border: `1px solid ${totalSelected > 0 ? '#a8c5a040' : '#e5e7eb'}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
                 <span style={{ fontSize: 12, color: totalSelected > 0 ? '#a8c5a0' : '#9ca3af', fontWeight: 600 }}>
                     {totalSelected === 0
@@ -515,7 +487,7 @@ export function PanoramaBookingPicker({ date, time, duration = 90, guests, selec
                         Clear all
                     </button>
                 )}
-            </div>
+            </div> */}
         </div>
     )
 }

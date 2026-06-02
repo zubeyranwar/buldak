@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react'
-import dynamic from 'next/dynamic'
 import type { CanvasTable, FloorPlanTheme } from '@/components/admin/FloorPlanEditorClient'
+import { toSlotMs } from '@/lib/timezone'
+import dynamic from 'next/dynamic'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const KonvaCanvas = dynamic(() => import('@/components/admin/KonvaCanvas'), {
     ssr: false,
@@ -76,27 +77,8 @@ export function FloorPlanPicker({
             const occupied = new Set<string>()
 
             // Parse selected time to ms if provided
-            let startMs: number | null = null
-            let endMs: number | null = null
-
-            if (forDate && forTime) {
-                // Normalise 12h → 24h
-                const ampm = forTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-                let time24 = forTime
-                if (ampm) {
-                    let h = parseInt(ampm[1], 10)
-                    const m = ampm[2]
-                    const meridiem = ampm[3].toUpperCase()
-                    if (meridiem === 'AM' && h === 12) h = 0
-                    if (meridiem === 'PM' && h !== 12) h += 12
-                    time24 = `${String(h).padStart(2, '0')}:${m}`
-                }
-                const dt = new Date(`${forDate}T${time24}:00`)
-                if (!isNaN(dt.getTime())) {
-                    startMs = dt.getTime()
-                    endMs = startMs + dur * 60 * 1000
-                }
-            }
+            const startMs = (forDate && forTime) ? toSlotMs(forDate, forTime) : null
+            const endMs = startMs !== null ? startMs + dur * 60 * 1000 : null
 
             for (const reservation of data.docs ?? []) {
                 // If we have a time, only mark chairs from overlapping reservations
