@@ -55,7 +55,7 @@ export const TestimonalSwiper = ({ testimonals }: { testimonals: TestimonalDoc[]
                 stiffness: 400,
                 damping: 58,
                 mass: 1,
-                delay: 0.6
+                delay: 0.5
             },
         }),
     } as const;
