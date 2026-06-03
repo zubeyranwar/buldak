@@ -164,7 +164,6 @@ export const TestimonalCard = ({
                     allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                 />
             )}
-
             <Link
                 href={videoUrl}
                 target="_blank"
