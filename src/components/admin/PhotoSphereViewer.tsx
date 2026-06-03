@@ -12,12 +12,10 @@ import '@photo-sphere-viewer/core/index.css'
 import '@photo-sphere-viewer/markers-plugin/index.css'
 import '@photo-sphere-viewer/virtual-tour-plugin/index.css'
 
-
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type HotspotType = 'table' | 'navigate'
-export type HotspotStatus = 'available' | 'partial' | 'booked' | 'inactive'
+export type HotspotStatus = 'available' | 'booked' | 'inactive'
 
 export interface PanoramaHotspot {
     key: string
@@ -25,8 +23,7 @@ export interface PanoramaHotspot {
     yaw: number
     pitch: number
     tableNumber?: string
-    bookedChairs?: number
-    totalChairs?: number
+    tableId?: string
     status?: HotspotStatus
     targetSceneId?: string
     targetSceneLabel?: string
@@ -43,7 +40,6 @@ export interface PhotoSphereScene {
 
 export interface PhotoSphereViewerTheme {
     available: string
-    partial: string
     booked: string
     inactive: string
     selected: string
@@ -56,25 +52,25 @@ export interface PhotoSphereViewerProps {
     editorMode?: 'table' | 'navigate' | null
     onPanoramaClick?: (coords: { yaw: number; pitch: number }) => void
     onHotspotClick?: (key: string) => void
+    /** Single selected key (editor use) */
     selectedKey?: string | null
+    /** Multi-selected table IDs (booking picker use) */
+    selectedTableIds?: Set<string>
     scenes?: PhotoSphereScene[]
     activeSceneId?: string
     onSceneChange?: (sceneId: string) => void
     theme?: Partial<PhotoSphereViewerTheme>
     width?: number | string
     height?: number | string
-    /** Called once viewer is ready — receives a function you can call to play the exit animation */
     onExitReady?: (playExit: () => Promise<void>) => void
-    /** Skip the intro animation (e.g. in editor mode) */
     disableIntro?: boolean
 }
 
 const DEFAULT_THEME: PhotoSphereViewerTheme = {
     available: '#a8c5a0',
-    partial: '#f59e0b',
     booked: '#ef4444',
     inactive: '#6b7280',
-    selected: '#7c3aed',
+    selected: '#3b82f6',
     text: '#ffffff',
 }
 
@@ -88,59 +84,99 @@ const ANIM = {
     fisheye: { start: 2, end: 0 },
 }
 
-// ── Marker HTML ───────────────────────────────────────────────────────────────
+// ── Table marker HTML — clean table-based, no chair progress bar ──────────────
 
-function buildMarkerHtml(
+function buildTableMarkerHtml(
     hotspot: PanoramaHotspot,
     theme: PhotoSphereViewerTheme,
     isSelected: boolean,
 ): string {
     const status = hotspot.status ?? 'available'
-    const bg = isSelected ? theme.selected
-        : status === 'available' ? theme.available
-            : status === 'partial' ? theme.partial
-                : status === 'booked' ? theme.booked
-                    : theme.inactive
 
-    const booked = hotspot.bookedChairs ?? 0
-    const total = hotspot.totalChairs ?? 0
-    const pct = total > 0 ? Math.round((booked / total) * 100) : 0
-    const border = isSelected ? '#fff' : 'rgba(255,255,255,0.4)'
+    const bg = isSelected
+        ? theme.selected
+        : status === 'available'
+            ? theme.available
+            : status === 'booked'
+                ? theme.booked
+                : theme.inactive
+
+    const border = isSelected ? '#fff' : 'rgba(255,255,255,0.35)'
     const shadow = isSelected
-        ? `0 2px 12px rgba(0,0,0,0.4),0 0 0 3px ${theme.selected}`
+        ? `0 2px 16px rgba(0,0,0,0.45), 0 0 0 3px ${theme.selected}`
         : '0 2px 12px rgba(0,0,0,0.4)'
 
+    const label = status === 'booked'
+        ? 'Booked'
+        : status === 'inactive'
+            ? 'N/A'
+            : isSelected
+                ? 'Your table'
+                : 'Available'
+
+    const labelColor = isSelected
+        ? 'rgba(255,255,255,0.95)'
+        : status === 'available'
+            ? 'rgba(255,255,255,0.8)'
+            : 'rgba(255,255,255,0.7)'
+
     return `
-<div style="background:${bg};border:2.5px solid ${border};box-shadow:${shadow};border-radius:10px;padding:7px 10px 10px;min-width:72px;cursor:pointer;user-select:none;position:relative;font-family:'DM Sans',system-ui,sans-serif;">
-  <div style="font-size:12px;font-weight:700;color:${theme.text};letter-spacing:0.03em;line-height:1;margin-bottom:${total > 0 ? '5px' : '0'}">T-${hotspot.tableNumber ?? '?'}</div>
-  ${total > 0 ? `
-  <div style="display:flex;align-items:center;gap:5px;">
-    <div style="flex:1;height:4px;background:rgba(0,0,0,0.25);border-radius:2px;overflow:hidden;">
-      <div style="width:${pct}%;height:100%;background:rgba(255,255,255,0.85);border-radius:2px;"></div>
-    </div>
-    <span style="font-size:10px;color:rgba(255,255,255,0.9);font-weight:600;white-space:nowrap;">${booked}/${total}</span>
-  </div>` : ''}
-  <div style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid ${bg};"></div>
+<div style="
+    background:${bg};
+    border: 2.5px solid ${border};
+    box-shadow: ${shadow};
+    border-radius: 10px;
+    padding: 8px 12px 10px;
+    min-width: 68px;
+    cursor: ${status === 'booked' || status === 'inactive' ? 'not-allowed' : 'pointer'};
+    user-select: none;
+    position: relative;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    text-align: center;
+    transition: transform 0.15s ease;
+">
+    <div style="
+        font-size: 13px;
+        font-weight: 800;
+        color: ${theme.text};
+        letter-spacing: 0.04em;
+        line-height: 1;
+        margin-bottom: 4px;
+    ">T-${hotspot.tableNumber ?? '?'}</div>
+    <div style="
+        font-size: 10px;
+        font-weight: 600;
+        color: ${labelColor};
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        line-height: 1;
+    ">${label}</div>
+    <div style="
+        position: absolute;
+        bottom: -7px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0; height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 7px solid ${bg};
+    "></div>
 </div>`
 }
 
 // ── Nav marker HTML ───────────────────────────────────────────────────────────
-// Fix 2: accepts isFullyBooked to render a dimmed variant with a FULL badge
 
 function buildNavMarkerHtml(label: string, isFullyBooked: boolean): string {
     if (isFullyBooked) {
         return `
 <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:4px;opacity:0.45;cursor:not-allowed;">
-  <img
-    src="/direction.png"
-    style="width:52px;height:52px;filter:grayscale(1) drop-shadow(0 4px 16px rgba(0,0,0,0.5));"
-  />
-  <div style="
-    background:#ef4444;color:#fff;font-size:9px;font-weight:800;
-    letter-spacing:0.08em;padding:2px 7px;border-radius:999px;
-    font-family:'DM Sans',system-ui,sans-serif;white-space:nowrap;
-    box-shadow:0 1px 4px rgba(0,0,0,0.4);
-  ">FULL</div>
+    <img src="/direction.png" style="width:52px;height:52px;filter:grayscale(1) drop-shadow(0 4px 16px rgba(0,0,0,0.5));" />
+    <div style="
+        background:#ef4444;color:#fff;font-size:9px;font-weight:800;
+        letter-spacing:0.08em;padding:2px 7px;border-radius:999px;
+        font-family:'DM Sans',system-ui,sans-serif;white-space:nowrap;
+        box-shadow:0 1px 4px rgba(0,0,0,0.4);
+    ">FULL</div>
 </div>`
     }
 
@@ -148,8 +184,7 @@ function buildNavMarkerHtml(label: string, isFullyBooked: boolean): string {
 <img
     src="/direction.png"
     style="
-        width: 52px;
-        height: 52px;
+        width: 52px; height: 52px;
         cursor: pointer;
         filter: drop-shadow(0 4px 16px rgba(0,0,0,0.7));
         transition: transform 0.15s ease, opacity 0.15s ease;
@@ -158,61 +193,6 @@ function buildNavMarkerHtml(label: string, isFullyBooked: boolean): string {
     onmouseenter="this.style.transform='scale(1.2)';this.style.opacity='1'"
     onmouseleave="this.style.transform='scale(1)';this.style.opacity='0.88'"
 />`
-}
-
-// ── Loading skeleton ──────────────────────────────────────────────────────────
-// Fix 3: shown while the panorama image is still fetching/decoding
-
-function PanoramaSkeleton({ width, height }: { width: number | string; height: number | string }) {
-    return (
-        <div style={{
-            position: 'absolute', inset: 0, zIndex: 5,
-            width, height,
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 20,
-            borderRadius: 8,
-        }}>
-            {/* Spinner */}
-            <div style={{ position: 'relative', width: 52, height: 52 }}>
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    borderRadius: '50%',
-                    border: '3px solid rgba(255,255,255,0.08)',
-                    borderTopColor: '#a8c5a0',
-                    animation: 'psv-spin 0.9s linear infinite',
-                }} />
-            </div>
-            <span style={{
-                color: 'rgba(255,255,255,0.4)',
-                fontSize: 12, fontFamily: 'DM Sans, system-ui',
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-            }}>
-                Loading panorama…
-            </span>
-            {/* Fake hotspot pills */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                {['T-1', 'T-2', 'T-3'].map(label => (
-                    <div key={label} style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1.5px solid rgba(255,255,255,0.1)',
-                        borderRadius: 8, padding: '6px 14px',
-                        color: 'rgba(255,255,255,0.18)',
-                        fontSize: 11, fontWeight: 700,
-                        fontFamily: 'DM Sans, system-ui',
-                        animation: 'psv-pulse 1.6s ease-in-out infinite',
-                        animationDelay: `${['0s', '0.2s', '0.4s'][['T-1', 'T-2', 'T-3'].indexOf(label)]}`,
-                    }}>
-                        {label}
-                    </div>
-                ))}
-            </div>
-            <style>{`
-                @keyframes psv-spin  { to { transform: rotate(360deg); } }
-                @keyframes psv-pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
-            `}</style>
-        </div>
-    )
 }
 
 // ── Crosshair ─────────────────────────────────────────────────────────────────
@@ -238,6 +218,9 @@ function EditorCrosshair({ mode }: { mode: 'table' | 'navigate' }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+let _introPlayed = false
+
+
 export function PhotoSphereViewer({
     imageUrl = '',
     hotspots = [],
@@ -245,6 +228,7 @@ export function PhotoSphereViewer({
     onPanoramaClick,
     onHotspotClick,
     selectedKey = null,
+    selectedTableIds,
     scenes,
     activeSceneId,
     onSceneChange,
@@ -259,25 +243,22 @@ export function PhotoSphereViewer({
     const viewerRef = useRef<Viewer | null>(null)
     const markersRef = useRef<InstanceType<typeof MarkersPlugin> | null>(null)
     const [viewerReady, setViewerReady] = useState(false)
-
-    // Fix 1: track which scene is currently displayed
     const [currentSceneId, setCurrentSceneId] = useState<string | undefined>(
         activeSceneId ?? scenes?.[0]?.sceneId
     )
 
-    // Fix 3: skeleton visibility
-    const [panoramaLoaded, setPanoramaLoaded] = useState(false)
-
-    // Keep latest callback refs so event listeners never go stale
     const editorModeRef = useRef(editorMode)
     const onPanoramaClickRef = useRef(onPanoramaClick)
     const onHotspotClickRef = useRef(onHotspotClick)
     const onExitReadyRef = useRef(onExitReady)
     const hotspotsRef = useRef(hotspots)
     const selectedKeyRef = useRef(selectedKey)
+    const selectedTableIdsRef = useRef(selectedTableIds)
     const themeRef = useRef(theme)
-    // Fix 1: keep scenes accessible inside stable callbacks
     const scenesRef = useRef(scenes)
+    const currentSceneIdRef = useRef<string | undefined>(activeSceneId ?? scenes?.[0]?.sceneId)
+    const tourRef = useRef<any>(null)
+
 
     useEffect(() => { editorModeRef.current = editorMode }, [editorMode])
     useEffect(() => { onPanoramaClickRef.current = onPanoramaClick }, [onPanoramaClick])
@@ -285,10 +266,10 @@ export function PhotoSphereViewer({
     useEffect(() => { onExitReadyRef.current = onExitReady }, [onExitReady])
     useEffect(() => { hotspotsRef.current = hotspots }, [hotspots])
     useEffect(() => { selectedKeyRef.current = selectedKey }, [selectedKey])
+    useEffect(() => { selectedTableIdsRef.current = selectedTableIds }, [selectedTableIds])
     useEffect(() => { themeRef.current = theme }, [theme])
     useEffect(() => { scenesRef.current = scenes }, [scenes])
 
-    // ── Fix 2 helper: build a set of scene IDs where all tables are booked/inactive ──
     const buildBookedSceneIds = useCallback((scenesToCheck: PhotoSphereScene[] | undefined): Set<string> => {
         const booked = new Set<string>()
         if (!scenesToCheck) return booked
@@ -301,87 +282,107 @@ export function PhotoSphereViewer({
         return booked
     }, [])
 
-    // ── Helper: draw markers for the specified scene (Fix 1) ──────────────────
     const drawMarkers = useCallback((forSceneId?: string) => {
         const markers = markersRef.current
         if (!markers) return
 
-        // Fix 1: resolve the correct hotspot list
-        const activeId = forSceneId ?? currentSceneId
-        const sceneHotspots = scenesRef.current
+        const activeId = forSceneId ?? currentSceneIdRef.current
+        if (scenesRef.current && scenesRef.current.length > 0 && !activeId) return
+        const sceneHotspots = scenesRef.current && scenesRef.current.length > 0
             ? (scenesRef.current.find(s => s.sceneId === activeId)?.hotspots ?? [])
             : hotspotsRef.current
 
-        // Fix 2: build fully-booked scene set
         const bookedSceneIds = buildBookedSceneIds(scenesRef.current)
+        const multiSelected = selectedTableIdsRef.current
 
         markers.clearMarkers()
         sceneHotspots.forEach(h => {
             if (h.type === 'table') {
+                // Multi-selection (booking picker) takes priority over single selectedKey (editor)
+                const isSelected = multiSelected
+                    ? !!(h.tableId && multiSelected.has(h.tableId))
+                    : h.key === selectedKeyRef.current
+
                 markers.addMarker({
                     id: h.key,
                     position: { yaw: h.yaw, pitch: h.pitch },
-                    html: buildMarkerHtml(h, themeRef.current, h.key === selectedKeyRef.current),
+                    html: buildTableMarkerHtml(h, themeRef.current, isSelected),
                     anchor: 'bottom center',
-                    style: { cursor: 'pointer' },
+                    style: { cursor: h.status === 'booked' || h.status === 'inactive' ? 'not-allowed' : 'pointer' },
                 })
             } else if (h.type === 'navigate') {
-                // Fix 2: dim nav markers that point at fully-booked scenes
                 const isFullyBooked = !!(h.targetSceneId && bookedSceneIds.has(h.targetSceneId))
                 markers.addMarker({
                     id: h.key,
                     position: { yaw: h.yaw, pitch: h.pitch },
                     html: buildNavMarkerHtml(h.targetSceneLabel ?? h.targetSceneId ?? '', isFullyBooked),
                     anchor: 'center center',
-                    // Fix 2: store fullness on the marker data for click guard below
-                    data: { isFullyBooked },
+                    data: { isFullyBooked, targetSceneId: h.targetSceneId }, // ← add targetSceneId here
                     style: { cursor: isFullyBooked ? 'not-allowed' : 'pointer' },
                 })
             }
         })
     }, [buildBookedSceneIds, currentSceneId])
 
-    // ── onReady — runs once ───────────────────────────────────────────────────
     const handleReady = useCallback((instance: Viewer) => {
         viewerRef.current = instance
         markersRef.current = instance.getPlugin(MarkersPlugin) as InstanceType<typeof MarkersPlugin>
 
-        // sphere click → placement
         instance.addEventListener('click', (e: any) => {
             if (e.marker) return
             if (!editorModeRef.current) return
             onPanoramaClickRef.current?.({ yaw: e.data.yaw, pitch: e.data.pitch })
         })
 
-        // marker click → selection (Fix 2: guard booked nav markers)
         const markers = instance.getPlugin(MarkersPlugin) as InstanceType<typeof MarkersPlugin>
         if (markers) {
             markers.addEventListener('select-marker', (e: any) => {
-                if (e.marker?.data?.isFullyBooked) return   // Fix 2: swallow click
+                if (e.marker?.data?.isFullyBooked) return
+                if (e.marker?.data?.targetSceneId) {
+                    if (tourRef.current) {
+                        tourRef.current.setCurrentNode(e.marker.data.targetSceneId)
+                    } else {
+                        onHotspotClickRef.current?.(e.marker.id)
+                    }
+                    return
+                }
                 onHotspotClickRef.current?.(e.marker.id)
             })
         }
 
-        // virtual tour scene change (Fix 1: update currentSceneId + redraw immediately)
         const tour = instance.getPlugin(VirtualTourPlugin) as any
+        tourRef.current = tour
+        console.log('[tour] methods:', Object.keys(tour ?? {}))
+
         if (tour) {
             tour.addEventListener('node-changed', (e: any) => {
                 const newSceneId: string = e.node.id
                 setCurrentSceneId(newSceneId)
+                currentSceneIdRef.current = newSceneId
                 onSceneChange?.(newSceneId)
-                // Fix 1: pass sceneId directly — don't wait for state to settle
                 drawMarkers(newSceneId)
             })
+
+            // ← ADD: wait for the plugin to settle then sync the real starting node
+            setTimeout(() => {
+                const startId = tour.getCurrentNode?.()?.id ?? currentSceneIdRef.current
+                currentSceneIdRef.current = startId
+                setCurrentSceneId(startId)
+                drawMarkers(startId)
+            }, 300)
         }
 
-        // Fix 3: flip panoramaLoaded on first successful render; also redraw markers
         instance.addEventListener('panorama-loaded', () => {
-            setPanoramaLoaded(true)          // Fix 3: hide skeleton
-            setTimeout(() => drawMarkers(), 150)
+            setTimeout(() => {
+                const tour = instance.getPlugin(VirtualTourPlugin) as any
+                const sceneId = tour?.getCurrentNode?.()?.id ?? currentSceneIdRef.current
+                currentSceneIdRef.current = sceneId  // ← keep ref in sync
+                drawMarkers(sceneId)
+            }, 150)
         })
 
-        // ── Intro animation (booking picker only, not editor) ─────────────────
-        if (!disableIntro) {
+        if (!disableIntro && !_introPlayed) {
+            _introPlayed = true
             instance.setOptions({
                 mousemove: false,
                 mousewheel: false,
@@ -407,7 +408,6 @@ export function PhotoSphereViewer({
             }, 400)
         }
 
-        // ── Exit animation — exposed to parent via onExitReady ────────────────
         onExitReadyRef.current?.(() => new Promise<void>(resolve => {
             instance.setOptions({ mousemove: false, mousewheel: false })
             new (utils as any).Animation({
@@ -429,15 +429,15 @@ export function PhotoSphereViewer({
         }))
 
         setViewerReady(true)
+        // ← ADD THIS: draw markers immediately on first load
     }, [disableIntro, drawMarkers])
 
-    // ── Sync markers via useEffect (hotspot/selection/scene changes) ──────────
+    // Redraw whenever selection, hotspot status, or scene changes
     useEffect(() => {
         if (!viewerReady) return
         drawMarkers(currentSceneId)
-    }, [hotspots, selectedKey, viewerReady, currentSceneId, theme.available, theme.booked, theme.partial, theme.selected, drawMarkers])
+    }, [hotspots, selectedKey, selectedTableIds, viewerReady, currentSceneId, drawMarkers])
 
-    // ── Build plugins list ────────────────────────────────────────────────────
     const plugins: any[] = [
         [MarkersPlugin, {}],
         [AutorotatePlugin, { autostartDelay: null, autostartOnIdle: false }],
@@ -450,11 +450,7 @@ export function PhotoSphereViewer({
             name: scene.label,
             links: scene.hotspots
                 .filter(h => h.type === 'navigate' && h.targetSceneId)
-                .map(h => ({
-                    nodeId: h.targetSceneId!,
-                    position: { yaw: h.yaw, pitch: h.pitch },
-                    name: h.targetSceneLabel ?? h.targetSceneId,
-                })),
+                .map(h => ({ nodeId: h.targetSceneId! })),
         }))
         plugins.push([VirtualTourPlugin, {
             nodes,
@@ -463,7 +459,6 @@ export function PhotoSphereViewer({
         }])
     }
 
-    // ── Empty state ───────────────────────────────────────────────────────────
     if (!imageUrl && (!scenes || scenes.length === 0)) {
         return (
             <div style={{
@@ -485,9 +480,11 @@ export function PhotoSphereViewer({
     return (
         <div style={{ position: 'relative', width, height }}>
             <ReactPhotoSphereViewer
-                src={scenes && scenes.length > 0
-                    ? (scenes.find(s => s.sceneId === activeSceneId)?.panoramaUrl ?? scenes[0]?.panoramaUrl ?? '')
-                    : imageUrl}
+                src={
+                    scenes && scenes.length > 0
+                        ? (scenes.find(s => s.sceneId === activeSceneId)?.panoramaUrl ?? scenes[0]?.panoramaUrl ?? '')
+                        : imageUrl
+                }
                 height={typeof height === 'number' ? `${height}px` : height}
                 width={typeof width === 'number' ? `${width}px` : width}
                 defaultYaw={0}

@@ -1,495 +1,429 @@
-//@ts-nocheck
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import { toSlotMs } from '@/lib/timezone'
 import dynamic from 'next/dynamic'
-import type { PanoramaHotspot, HotspotStatus } from '../components/admin/PhotoSphereViewer'
-import { resolveDate, resolveTime, toSlotMs } from '@/lib/timezone'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { HotspotStatus, PhotoSphereScene, PhotoSphereViewerTheme } from '../components/admin/PhotoSphereViewer'
 
-const PhotoSphereViewer = dynamic(() => import('../components/admin/PhotoSphereViewer'), {
+const PhotoSphereViewer = dynamic(() => import('@/components/admin/PhotoSphereViewer'), {
     ssr: false,
     loading: () => (
-        <div style={{
-            height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#0f172a', color: '#64748b',
-            fontFamily: 'DM Sans, system-ui', borderRadius: 12, fontSize: 13,
-        }}>
-            Loading 3D view…
+        <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+            Loading panorama…
         </div>
     ),
 })
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ChairInfo { chairId: string; seatLabel?: string }
-
-interface TableInfo {
-    id: string; tableNumber: string; capacity: number
-    zone?: string; type?: string; chairs: ChairInfo[]
+interface PanoramaPanoramaImage {
+    url?: string | null
 }
 
-interface AvailabilityInfo {
-    status: HotspotStatus
-    bookedChairs: number; totalChairs: number
-    bookedChairIds: string[]
+type PanoramaHotspotDoc = {
+    key?: string | null
+    type?: 'table' | 'navigate' | null
+    yaw?: number | null
+    pitch?: number | null
+    table?: string | number | { id?: string | number | null; tableNumber?: string | null } | null
+    tableNumber?: string | null
+    targetSceneId?: string | null
+    targetSceneLabel?: string | null
 }
 
-interface PanoramaSceneDoc {
-    sceneId: string; label: string; panoramaImageUrl?: string
-    hotspots: {
-        key: string; type: 'table' | 'navigate'
-        yaw: number; pitch: number
-        tableId?: string; tableNumber?: string
-        targetSceneId?: string; targetSceneLabel?: string
-    }[]
+type PanoramaSceneDoc = {
+    sceneId?: string | null
+    label?: string | null
+    panoramaImage?: PanoramaPanoramaImage | string | null
+    defaultYaw?: number | null
+    defaultPitch?: number | null
+    hotspots?: PanoramaHotspotDoc[] | null
 }
 
-export interface PanoramaBookingPickerProps {
-    date: string; time: string; duration?: number
+type PanoramaViewDoc = {
+    id: string | number
+    scenes?: PanoramaSceneDoc[] | null
+}
+
+type ReservationApiDoc = {
+    reservationDate: string
+    duration?: number | null
+    reservedTables?: (string | number | { id?: string | number | null })[] | null
+    bookedChairs?: { table?: string | number | { id?: string | number | null } }[] | null
+}
+
+interface PanoramaPickerProps {
+    date: string
+    time: string
+    duration?: number
     guests: number
-    selectedChairKeys: Set<string>
+    selectedTableIds: Set<string>
     onSelectionChange: (keys: Set<string>) => void
 }
 
-const STATUS_COLOR: Record<HotspotStatus, string> = {
-    available: '#a8c5a0', partial: '#f59e0b',
-    booked: '#ef4444', inactive: '#6b7280',
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// ── Helpers (same pattern as FloorPlanPicker) ─────────────────────────────────
-
-/**
- * Resolves human-friendly date labels like "Today" / "Tomorrow" into
- * "YYYY-MM-DD". Already-formatted dates pass through unchanged.
- */
-
-/**
- * Normalises "7:00 PM" → "19:00" and passes through "19:00" / "07:00"
- * unchanged. Matches the exact logic used in FloorPlanPicker.
- */
-
-// ── Chair Picker Panel ────────────────────────────────────────────────────────
-
-function ChairPickerPanel({ table, availability, guests, selectedChairKeys, onSelectionChange, onClose }: {
-    table: TableInfo; availability: AvailabilityInfo | null
-    guests: number; selectedChairKeys: Set<string>
-    onSelectionChange: (keys: Set<string>) => void; onClose: () => void
-}) {
-    const bookedIds = new Set(availability?.bookedChairIds ?? [])
-    const selectedForThisTable = table.chairs
-        .filter(c => selectedChairKeys.has(`${table.id}:${c.chairId}`))
-    const totalSelectedCount = selectedChairKeys.size
-    const remainingSlots = guests - totalSelectedCount + selectedForThisTable.length
-
-    const toggleChair = (chairId: string) => {
-        const key = `${table.id}:${chairId}`
-        const next = new Set(selectedChairKeys)
-        if (next.has(key)) { next.delete(key) }
-        else {
-            if (totalSelectedCount >= guests) return
-            next.add(key)
-        }
-        onSelectionChange(next)
+function relationId(value: string | number | { id?: string | number | null } | null | undefined): string {
+    if (typeof value === 'object' && value !== null) {
+        return value.id ? String(value.id) : ''
     }
-
-    const statusColor = availability ? STATUS_COLOR[availability.status] : STATUS_COLOR.available
-
-    return (
-        <div style={{
-            position: 'absolute', right: 16, top: 16, bottom: 16,
-            width: 240, zIndex: 20,
-            background: 'rgba(15,23,42,0.97)',
-            border: `1px solid ${statusColor}44`,
-            borderRadius: 14,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(12px)',
-            display: 'flex', flexDirection: 'column',
-            overflow: 'hidden',
-            animation: 'slideIn 0.2s ease',
-        }}>
-            <style>{`@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}`}</style>
-
-            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', fontFamily: 'DM Sans, system-ui' }}>Table T-{table.tableNumber}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, fontFamily: 'DM Sans, system-ui' }}>
-                        {table.zone ?? ''}{table.zone ? ' · ' : ''}{table.capacity} seats
-                    </div>
-                </div>
-                <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
-            </div>
-
-            <div style={{ padding: '10px 16px 6px' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: `${statusColor}18`, border: `1px solid ${statusColor}44`, borderRadius: 999, padding: '3px 10px' }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: statusColor }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'DM Sans, system-ui' }}>
-                        {availability?.bookedChairs ?? 0}/{availability?.totalChairs ?? table.capacity} booked
-                    </span>
-                </div>
-            </div>
-
-            <div style={{ padding: '4px 16px 8px' }}>
-                <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'DM Sans, system-ui' }}>
-                    Select up to <strong style={{ color: '#f1f5f9' }}>{remainingSlots}</strong> more seat{remainingSlots !== 1 ? 's' : ''}
-                </div>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {table.chairs.map(chair => {
-                        const key = `${table.id}:${chair.chairId}`
-                        const isBooked = bookedIds.has(chair.chairId)
-                        const isSelected = selectedChairKeys.has(key)
-                        const isDisabled = isBooked || (!isSelected && totalSelectedCount >= guests)
-
-                        return (
-                            <button
-                                type="button"
-                                key={chair.chairId}
-                                onClick={() => !isDisabled && toggleChair(chair.chairId)}
-                                disabled={isDisabled}
-                                style={{
-                                    padding: '10px 6px', borderRadius: 9,
-                                    border: '1.5px solid',
-                                    borderColor: isSelected ? '#a8c5a0' : isBooked ? '#ef444444' : '#334155',
-                                    background: isSelected ? '#a8c5a018' : isBooked ? '#ef444408' : 'transparent',
-                                    cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                    opacity: isDisabled && !isSelected ? 0.45 : 1,
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                                    transition: 'all 0.12s ease',
-                                }}
-                            >
-                                <div style={{ fontSize: 18 }}>{isBooked ? '🚫' : isSelected ? '✅' : '🪑'}</div>
-                                <span style={{ fontSize: 10, fontWeight: 600, color: isSelected ? '#a8c5a0' : isBooked ? '#ef4444' : '#94a3b8', fontFamily: 'DM Sans, system-ui', letterSpacing: '0.04em' }}>
-                                    {chair.seatLabel || chair.chairId}
-                                </span>
-                            </button>
-                        )
-                    })}
-                </div>
-            </div>
-
-            {selectedForThisTable.length > 0 && (
-                <div style={{ padding: '10px 16px', borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: '#a8c5a0', fontFamily: 'DM Sans, system-ui', fontWeight: 600 }}>
-                        {selectedForThisTable.length} seat{selectedForThisTable.length !== 1 ? 's' : ''} selected
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const next = new Set(selectedChairKeys)
-                            table.chairs.forEach(c => next.delete(`${table.id}:${c.chairId}`))
-                            onSelectionChange(next)
-                        }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 11, fontFamily: 'DM Sans, system-ui', textDecoration: 'underline' }}
-                    >Clear</button>
-                </div>
-            )}
-        </div>
-    )
+    return value ? String(value) : ''
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+function getImageUrl(img: PanoramaPanoramaImage | string | null | undefined): string {
+    if (!img) return ''
+    if (typeof img === 'string') return img
+    return img.url ?? ''
+}
 
-export function PanoramaBookingPicker({ date, time, duration = 90, guests, selectedChairKeys, onSelectionChange }: PanoramaBookingPickerProps) {
-    const [scenes, setScenes] = useState<PanoramaSceneDoc[]>([])
-    const [activeSceneId, setActiveSceneId] = useState<string | null>(null)
-    const [tableMap, setTableMap] = useState<Record<string, TableInfo>>({})
-    const [availability, setAvailability] = useState<Record<string, AvailabilityInfo>>({})
-    const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
+const DEFAULT_THEME: PhotoSphereViewerTheme = {
+    available: '#a8c5a0',
+    booked: '#ef4444',
+    inactive: '#6b7280',
+    selected: '#3b82f6',
+    text: '#ffffff',
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function PanoramaPicker({
+    date,
+    time,
+    duration = 90,
+    guests,
+    selectedTableIds,
+    onSelectionChange,
+}: PanoramaPickerProps) {
+    const [scenes, setScenes] = useState<PhotoSphereScene[]>([])
+    const [activeSceneId, setActiveSceneId] = useState<string | undefined>(undefined)
+    const [bookedTableIds, setBookedTableIds] = useState<Set<string>>(new Set())
     const [loading, setLoading] = useState(true)
     const [availLoading, setAvailLoading] = useState(false)
-    const [availLoaded, setAvailLoaded] = useState(false)
+
+    // Raw hotspot docs keyed by sceneId — we re-map statuses on top
+    const rawScenesRef = useRef<{ sceneId: string; panoramaUrl: string; hotspots: { key: string; tableId: string; tableNumber: string; yaw: number; pitch: number; type: 'table' | 'navigate'; targetSceneId?: string; targetSceneLabel?: string }[] }[]>([])
 
     const tablesLoadedRef = useRef(false)
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const pollRef = useRef<ReturnType<typeof setInterval>>()
 
-    // ── fetchAvailability — same pattern as FloorPlanPicker ──────────────────
-    // Fetches ALL non-cancelled reservations then filters by time overlap in JS.
-    // No custom API endpoint needed — identical to what works in the 2D picker.
-    // tableMapOverride lets the initial call pass the map before state has settled.
-    const fetchAvailability = async (forDate: string, forTime: string, dur: number, tableMapOverride?: Record<string, TableInfo>) => {
+    // ── Build PhotoSphereScene[] by merging raw hotspot data with availability ──
+
+    const buildScenes = useCallback((booked: Set<string>, selected: Set<string>): PhotoSphereScene[] => {
+        return rawScenesRef.current.map(rawScene => ({
+            sceneId: rawScene.sceneId,
+            label: rawScene.sceneId,
+            panoramaUrl: rawScene.panoramaUrl,  // ← empty!
+            hotspots: rawScene.hotspots.map(h => {
+                if (h.type === 'navigate') {
+                    return {
+                        key: h.key,
+                        type: 'navigate' as const,
+                        yaw: h.yaw,
+                        pitch: h.pitch,
+                        targetSceneId: h.targetSceneId,
+                        targetSceneLabel: h.targetSceneLabel,
+                    }
+                }
+                const status: HotspotStatus = booked.has(h.tableId)
+                    ? 'booked'
+                    : 'available'
+                return {
+                    key: h.key,
+                    type: 'table' as const,
+                    yaw: h.yaw,
+                    pitch: h.pitch,
+                    tableId: h.tableId,
+                    tableNumber: h.tableNumber,
+                    status,
+                }
+            }),
+        }))
+    }, [])
+
+    // ── Fetch availability ────────────────────────────────────────────────────
+
+    const fetchAvailability = useCallback(async (forDate: string, forTime: string, dur: number) => {
         setAvailLoading(true)
         try {
-            const slotStartMs = toSlotMs(forDate, forTime)
-            if (slotStartMs === null) {
-                console.warn('[PanoramaBookingPicker] invalid date/time:', forDate, forTime)
-                return
-            }
-            const slotStart = slotStartMs
-            const slotEnd = slotStart + dur * 60 * 1000
-            console.log('[PanoramaBookingPicker] slot UTC:', new Date(slotStart).toISOString(), '→', new Date(slotEnd).toISOString())
-
-            // ── Same fetch as FloorPlanPicker — all non-cancelled reservations ──
-            const res = await fetch(`/api/reservation?where[status][not_equals]=cancelled&limit=500&depth=1`)
+            const res = await fetch(
+                `/api/reservation?where[status][not_equals]=cancelled&limit=500&depth=1`
+            )
             const data = await res.json()
 
-            // Build: tableId → booked chairIds (filtering by time overlap in JS)
-            const bookedByTable: Record<string, string[]> = {}
+            const occupied = new Set<string>()
+            const startMs = (forDate && forTime) ? toSlotMs(forDate, forTime) : null
+            const endMs = startMs !== null ? startMs + dur * 60 * 1000 : null
 
-            for (const reservation of data.docs ?? []) {
-                const resStart = new Date(reservation.reservationDate).getTime()
-                const resDur = (reservation.duration ?? 90) * 60 * 1000
-                const resEnd = resStart + resDur
+            for (const reservation of (data.docs ?? []) as ReservationApiDoc[]) {
+                if (startMs !== null && endMs !== null) {
+                    const resStart = new Date(reservation.reservationDate).getTime()
+                    const resDur = (reservation.duration ?? 90) * 60 * 1000
+                    const resEnd = resStart + resDur
+                    if (startMs >= resEnd || endMs <= resStart) continue
+                }
 
-                // Skip non-overlapping
-                if (slotStart >= resEnd || slotEnd <= resStart) continue
-
+                for (const table of reservation.reservedTables ?? []) {
+                    const tableId = relationId(table)
+                    if (tableId) occupied.add(tableId)
+                }
                 for (const bc of reservation.bookedChairs ?? []) {
-                    const tableId = typeof bc.table === 'object'
-                        ? String(bc.table?.id ?? '')
-                        : String(bc.table ?? '')
-
-                    if (!tableId || !bc.chairId) continue
-                    if (!bookedByTable[tableId]) bookedByTable[tableId] = []
-                    if (!bookedByTable[tableId].includes(bc.chairId)) {
-                        bookedByTable[tableId].push(bc.chairId)
-                    }
+                    const tableId = relationId(bc.table)
+                    if (tableId) occupied.add(tableId)
                 }
             }
 
-            console.log('[PanoramaBookingPicker] booked by table:', bookedByTable)
+            setBookedTableIds(occupied)
 
-            // Use override map if provided (initial call before state settles),
-            // otherwise use the state value
-            const map = tableMapOverride ?? tableMap
-
-            const avail: Record<string, AvailabilityInfo> = {}
-            for (const [tableId, table] of Object.entries(map)) {
-                const bookedChairIds = bookedByTable[tableId] ?? []
-                const total = table.capacity
-                const booked = bookedChairIds.length
-                let status: HotspotStatus = 'available'
-                if (booked >= total) status = 'booked'
-                else if (booked > 0) status = 'partial'
-
-                avail[tableId] = { status, bookedChairs: booked, totalChairs: total, bookedChairIds }
+            // Remove any selected tables that are now booked
+            const validSelected = new Set([...selectedTableIds].filter(k => !occupied.has(k)))
+            if (validSelected.size !== selectedTableIds.size) {
+                onSelectionChange(validSelected)
             }
 
-            setAvailability(avail)
-            setAvailLoaded(true)
-        } catch (e) {
-            console.error('[PanoramaBookingPicker] availability error', e)
+            // Rebuild scenes with updated statuses
+            setScenes(buildScenes(occupied, validSelected))
+
+        } catch (err) {
+            console.error('[PanoramaPicker] availability fetch failed', err)
+            setBookedTableIds(new Set())
         } finally {
             setAvailLoading(false)
         }
-    }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [duration, buildScenes])
 
-    // ── Load panorama + tables once, then immediately fetch availability ───────
+    // ── Load panorama-view collection ─────────────────────────────────────────
+
     useEffect(() => {
-        Promise.all([
-            fetch('/api/panorama-view?limit=1&depth=2').then(r => r.json()),
-            fetch('/api/table-layout?limit=500&depth=1').then(r => r.json()),
-        ]).then(([pvData, tlData]) => {
-            const map: Record<string, TableInfo> = {}
-            for (const t of (tlData.docs ?? [])) {
-                map[String(t.id)] = {
-                    id: String(t.id),
-                    tableNumber: t.tableNumber ?? '',
-                    capacity: t.capacity ?? 4,
-                    zone: t.zone ?? '',
-                    type: t.type ?? 'square',
-                    chairs: (t.chairs ?? []).map((c: any) => ({
-                        chairId: c.chairId ?? '',
-                        seatLabel: c.seatLabel ?? '',
-                    })),
+        fetch('/api/panorama-view?limit=1&depth=2')
+            .then(r => r.json())
+            .then((pvData) => {
+                const pv: PanoramaViewDoc | undefined = pvData.docs?.[0]
+                if (!pv?.scenes?.length) {
+                    setLoading(false)
+                    return
                 }
-            }
-            setTableMap(map)
 
-            const doc = pvData.docs?.[0]
-            if (doc) {
-                const mapped: PanoramaSceneDoc[] = (doc.scenes ?? []).map((s: any) => ({
-                    sceneId: s.sceneId,
-                    label: s.label ?? 'Scene',
-                    panoramaImageUrl: s.panoramaImage?.url ?? '',
-                    hotspots: (s.hotspots ?? []).map((h: any) => ({
-                        key: h.key,
-                        type: h.type,
-                        yaw: h.yaw ?? 0,
-                        pitch: h.pitch ?? 0,
-                        tableId: typeof h.table === 'object' ? h.table?.id : h.table,
-                        tableNumber: h.tableNumber ?? h.table?.tableNumber,
-                        targetSceneId: h.targetSceneId,
-                        targetSceneLabel: h.targetSceneLabel,
-                    })),
-                }))
-                setScenes(mapped)
-                setActiveSceneId(mapped[0]?.sceneId ?? null)
-            }
+                // Build raw scene refs (stable — no availability baked in yet)
+                rawScenesRef.current = pv.scenes
+                    .filter((s): s is PanoramaSceneDoc & { sceneId: string } => !!s.sceneId)
+                    .map(s => ({
+                        sceneId: s.sceneId,
+                        panoramaUrl: getImageUrl(s.panoramaImage),
+                        hotspots: (s.hotspots ?? []).map(h => {
+                            const tableObj = h.table
+                            const tableId = typeof tableObj === 'object' && tableObj !== null
+                                ? String((tableObj as any).id ?? '')
+                                : String(tableObj ?? '')
+                            const tableNumber = typeof tableObj === 'object' && tableObj !== null
+                                ? (tableObj as any).tableNumber ?? h.tableNumber ?? ''
+                                : h.tableNumber ?? ''
+                            return {
+                                key: h.key ?? `${h.type}:${tableId || h.targetSceneId || Math.random()}`,
+                                type: (h.type ?? 'table') as 'table' | 'navigate',
+                                yaw: h.yaw ?? 0,
+                                pitch: h.pitch ?? 0,
+                                tableId,
+                                tableNumber,
+                                targetSceneId: h.targetSceneId ?? undefined,
+                                targetSceneLabel: h.targetSceneLabel ?? undefined,
+                            }
+                        }),
+                    }))
 
-            tablesLoadedRef.current = true
-            setLoading(false)
+                // Build initial scenes (all available, no booking data yet)
+                const initialScenes: PhotoSphereScene[] = pv.scenes
+                    .filter((s): s is PanoramaSceneDoc & { sceneId: string } => !!s.sceneId)
+                    .map(s => ({
+                        sceneId: s.sceneId,
+                        label: s.label ?? s.sceneId,
+                        panoramaUrl: getImageUrl(s.panoramaImage),
+                        hotspots: (s.hotspots ?? []).map(h => {
+                            const tableObj = h.table
+                            const tableId = typeof tableObj === 'object' && tableObj !== null
+                                ? String((tableObj as any).id ?? '')
+                                : String(tableObj ?? '')
+                            const tableNumber = typeof tableObj === 'object' && tableObj !== null
+                                ? (tableObj as any).tableNumber ?? h.tableNumber ?? ''
+                                : h.tableNumber ?? ''
+                            return {
+                                key: h.key ?? `${h.type}:${tableId || h.targetSceneId || Math.random()}`,
+                                type: (h.type ?? 'table') as 'table' | 'navigate',
+                                yaw: h.yaw ?? 0,
+                                pitch: h.pitch ?? 0,
+                                tableId,
+                                tableNumber,
+                                status: 'available' as HotspotStatus,
+                                targetSceneId: h.targetSceneId ?? undefined,
+                                targetSceneLabel: h.targetSceneLabel ?? undefined,
+                            }
+                        }),
+                    }))
 
-            // Pass map directly — setTableMap has not settled into state yet
-            fetchAvailability(date, time, duration, map)
-        })
+                setScenes(initialScenes)
+                setActiveSceneId(initialScenes[0]?.sceneId)
+                tablesLoadedRef.current = true
+                setLoading(false)
+
+                fetchAvailability(date, time, duration)
+            })
+            .catch(err => {
+                console.error('[PanoramaPicker] load failed', err)
+                setLoading(false)
+            })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // ── Re-fetch with debounce whenever date/time/duration changes ─────────────
-    useEffect(() => {
-        // Don't run until tables have loaded (initial fetch above handles that)
-        if (!tablesLoadedRef.current) return
+    // ── Re-fetch with debounce when date/time/duration changes ────────────────
 
+    useEffect(() => {
+        if (!tablesLoadedRef.current) return
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => {
             fetchAvailability(date, time, duration)
         }, 400)
-
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current)
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, time, duration])
+    }, [date, time, duration, fetchAvailability])
 
-    // ── Polling every 30s ──────────────────────────────────────────────────────
+    // ── Reset selection on guest/date/time changes ────────────────────────────
+
     useEffect(() => {
-        clearInterval(pollRef.current)
-        if (!date || !time) return
-        pollRef.current = setInterval(() => fetchAvailability(date, time, duration), 30_000)
-        return () => clearInterval(pollRef.current)
+        onSelectionChange(new Set())
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, time, duration])
+    }, [guests, date, time])
 
-    // ── Build hotspots ────────────────────────────────────────────────────────
-    const activeScene = scenes.find(s => s.sceneId === activeSceneId)
+    // ── Update scenes when selectedTableIds changes (keep marker highlights in sync) ──
 
-    const hotspots: PanoramaHotspot[] = (activeScene?.hotspots ?? []).map(h => {
-        if (h.type === 'navigate') {
-            return { key: h.key, type: 'navigate' as const, yaw: h.yaw, pitch: h.pitch, targetSceneId: h.targetSceneId, targetSceneLabel: h.targetSceneLabel }
+    useEffect(() => {
+        if (!tablesLoadedRef.current) return
+        setScenes(buildScenes(bookedTableIds, selectedTableIds))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedTableIds, bookedTableIds])
+
+    // ── Handle hotspot click from panorama ───────────────────────────────────
+
+    const handleHotspotClick = useCallback((key: string) => {
+        // Check if it's a nav hotspot first
+        for (const raw of rawScenesRef.current) {
+            const h = raw.hotspots.find(h => h.key === key)
+            if (h && h.type === 'navigate' && h.targetSceneId) {
+                setActiveSceneId(h.targetSceneId)  // ← manual scene switch
+                return
+            }
+            if (h && h.type === 'table' && h.tableId) {
+                if (bookedTableIds.has(h.tableId)) return
+                const next = new Set(selectedTableIds)
+                if (next.has(h.tableId)) next.delete(h.tableId)
+                else next.add(h.tableId)
+                onSelectionChange(next)
+                return
+            }
         }
-        const tableId = h.tableId ?? ''
-        const avail = availability[tableId]
-        const selectedHere = [...selectedChairKeys].filter(k => k.startsWith(`${tableId}:`)).length
-        return {
-            key: h.key, type: 'table' as const,
-            yaw: h.yaw, pitch: h.pitch,
-            tableNumber: h.tableNumber ?? tableMap[tableId]?.tableNumber ?? '?',
-            bookedChairs: (avail?.bookedChairs ?? 0) + selectedHere,
-            totalChairs: avail?.totalChairs ?? tableMap[tableId]?.capacity ?? 0,
-            status: !availLoaded ? 'inactive' : (avail?.status ?? 'available'),
-        }
-    })
+    }, [bookedTableIds, selectedTableIds, onSelectionChange])
 
-    const handleHotspotClick = (key: string) => {
-        if (key.startsWith('nav:')) {
-            // Extract target sceneId from the key "nav:patio"
-            const targetSceneId = key.replace('nav:', '')
-            setActiveSceneId(targetSceneId)
-            setSelectedTableId(null)
-            return
-        }
-        if (!key.startsWith('table:')) return
-        const tableId = key.replace('table:', '')
-        const avail = availability[tableId]
-        if (avail?.status === 'booked') return
-        setSelectedTableId(prev => prev === tableId ? null : tableId)
-    }
+    // ── Derived ───────────────────────────────────────────────────────────────
 
-    const totalSelected = selectedChairKeys.size
+    const selectedTables = scenes
+        .flatMap(s => s.hotspots)
+        .filter(h => h.type === 'table' && h.tableId && selectedTableIds.has(h.tableId ?? ''))
+
+    // We don't have per-table capacity here, so we use the FloorPlan for that.
+    // Just show a simple count indicator.
+    const selectedCount = selectedTableIds.size
+
+    const legendItems = [
+        { color: DEFAULT_THEME.available, label: 'Available' },
+        { color: DEFAULT_THEME.booked, label: 'Booked' },
+        { color: DEFAULT_THEME.selected, label: 'Your selection' },
+    ]
 
     if (loading) {
         return (
-            <div style={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', borderRadius: 12, color: '#64748b', fontFamily: 'DM Sans, system-ui', fontSize: 13 }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #334155', borderTopColor: '#3b82f6', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px' }} />
-                    Loading floor…
-                    <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-                </div>
+            <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                Loading panorama…
             </div>
         )
     }
 
-    if (scenes.length === 0) {
+    if (!scenes.length) {
         return (
-            <div style={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', borderRadius: 12, color: '#64748b', fontFamily: 'DM Sans, system-ui', fontSize: 13, flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 28 }}>🌐</span>
-                <span>No panorama configured yet</span>
-            </div>
+            <p className="text-sm text-muted-foreground py-4">
+                No panorama tour set up yet. Ask the restaurant to configure one in the admin panel.
+            </p>
         )
     }
-
-    const selectedTable = selectedTableId ? tableMap[selectedTableId] : null
-    const selectedTableAvail = selectedTableId ? availability[selectedTableId] : null
 
     return (
-        <div style={{ fontFamily: 'DM Sans, system-ui' }}>
-            {/* Scene tabs */}
+        <div className="flex flex-col gap-3">
+            {/* Legend */}
+            <div className="flex gap-4 flex-wrap text-xs text-muted-foreground">
+                {legendItems.map(l => (
+                    <span key={l.label} className="flex items-center gap-1.5">
+                        <span
+                            className="inline-block w-3 h-3 rounded-full"
+                            style={{ background: l.color }}
+                        />
+                        {l.label}
+                    </span>
+                ))}
+            </div>
+
+            {/* Status line — mirrors FloorPlanPicker */}
+            <div className="flex items-center gap-2 text-xs">
+                {availLoading && (
+                    <span className="animate-spin inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full text-muted-foreground" />
+                )}
+                {(!date || !time) ? (
+                    <p className="text-amber-600">
+                        ⚠ Select a date and time above to filter availability.
+                    </p>
+                ) : selectedCount === 0 ? (
+                    <p className="text-amber-600">
+                        Click a table in the panorama to select it.
+                    </p>
+                ) : (
+                    <p className="text-green-700">
+                        ✓ {selectedCount} table{selectedCount !== 1 ? 's' : ''} selected — you're all set!
+                    </p>
+                )}
+            </div>
+
+            {/* Panorama viewer */}
+            <div className="border rounded-lg overflow-hidden" style={{ maxWidth: '100%' }}>
+                <PhotoSphereViewer
+                    imageUrl={scenes.find(s => s.sceneId === activeSceneId)?.panoramaUrl ?? ''}
+                    hotspots={scenes.find(s => s.sceneId === activeSceneId)?.hotspots ?? []}
+                    selectedTableIds={selectedTableIds}
+                    onHotspotClick={handleHotspotClick}
+                    height={460}
+                    width="100%"
+                    disableIntro={false}
+                    key={activeSceneId}
+                />
+            </div>
+
+            {/* Scene tabs — shown only when there are multiple scenes */}
             {scenes.length > 1 && (
-                <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+                <div className="flex gap-2 flex-wrap text-xs">
                     {scenes.map(s => (
                         <button
-                            type="button"
                             key={s.sceneId}
-                            onClick={() => { setActiveSceneId(s.sceneId); setSelectedTableId(null) }}
-                            style={{ padding: '4px 12px', borderRadius: 999, border: '1px solid', borderColor: s.sceneId === activeSceneId ? '#3b82f6' : '#334155', background: s.sceneId === activeSceneId ? '#1d4ed820' : 'transparent', color: s.sceneId === activeSceneId ? '#60a5fa' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, system-ui' }}
+                            onClick={() => setActiveSceneId(s.sceneId)}
+                            className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${s.sceneId === activeSceneId
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:border-primary/50'
+                                }`}
                         >
                             {s.label}
                         </button>
                     ))}
                 </div>
             )}
-
-            <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}>
-                <PhotoSphereViewer
-                    imageUrl={activeScene?.panoramaImageUrl || 'https://pannellum.org/images/alma.jpg'}
-                    hotspots={hotspots}
-                    editorMode={null}
-                    selectedKey={selectedTableId ? `table:${selectedTableId}` : null}
-                    onHotspotClick={handleHotspotClick}
-                    height={420}
-                    width="100%"
-                />
-
-                {!availLoaded && !availLoading && (
-                    <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15,23,42,0.9)', borderRadius: 999, padding: '5px 14px', fontSize: 11, color: '#f59e0b', fontFamily: 'DM Sans, system-ui', zIndex: 15, whiteSpace: 'nowrap', backdropFilter: 'blur(6px)' }}>
-                        📅 Select a date and time to see availability
-                    </div>
-                )}
-
-                {availLoading && (
-                    <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15,23,42,0.85)', borderRadius: 999, padding: '4px 12px', fontSize: 11, color: '#94a3b8', fontFamily: 'DM Sans, system-ui', zIndex: 15 }}>
-                        Checking availability…
-                    </div>
-                )}
-
-                {availLoaded && !selectedTableId && !availLoading && (
-                    <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15,23,42,0.85)', borderRadius: 999, padding: '5px 14px', fontSize: 11, color: '#94a3b8', fontFamily: 'DM Sans, system-ui', zIndex: 15, whiteSpace: 'nowrap', backdropFilter: 'blur(6px)' }}>
-                        🪑 Click a table to pick your seats
-                    </div>
-                )}
-
-                {selectedTable && (
-                    <ChairPickerPanel
-                        table={selectedTable}
-                        availability={selectedTableAvail}
-                        guests={guests}
-                        selectedChairKeys={selectedChairKeys}
-                        onSelectionChange={onSelectionChange}
-                        onClose={() => setSelectedTableId(null)}
-                    />
-                )}
-            </div>
-
-            {/* Summary
-            <div style={{ marginTop: 10, padding: '8px 12px', background: totalSelected > 0 ? '#a8c5a010' : '#f9fafb', border: `1px solid ${totalSelected > 0 ? '#a8c5a040' : '#e5e7eb'}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-                <span style={{ fontSize: 12, color: totalSelected > 0 ? '#a8c5a0' : '#9ca3af', fontWeight: 600 }}>
-                    {totalSelected === 0
-                        ? `Select ${guests} seat${guests !== 1 ? 's' : ''} for your party`
-                        : `${totalSelected} / ${guests} seat${guests !== 1 ? 's' : ''} selected`}
-                </span>
-                {totalSelected > 0 && totalSelected < guests && <span style={{ fontSize: 11, color: '#f59e0b' }}>{guests - totalSelected} more needed</span>}
-                {totalSelected === guests && <span style={{ fontSize: 11, color: '#a8c5a0' }}>✓ All seats chosen</span>}
-                {totalSelected > 0 && (
-                    <button type="button" onClick={() => onSelectionChange(new Set())} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 11, textDecoration: 'underline' }}>
-                        Clear all
-                    </button>
-                )}
-            </div> */}
         </div>
     )
 }
 
-export default PanoramaBookingPicker
+export default PanoramaPicker
