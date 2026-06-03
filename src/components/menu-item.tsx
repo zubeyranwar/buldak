@@ -73,11 +73,11 @@ export const MenuItem = ({ index, item, itemCount }: { index: number, item: Menu
                         </LayerInViewAnim>
 
                         <LayerInViewAnim as="p" based="physics" delay={0.2} amount={0.1} className="nav-s text-gray!">
-                            {hasOldPrice ? (
+                            {/* {hasOldPrice ? (
                                 <span className="nav-s-decor">{formattedOldPrice}</span>
-                            ) : (
-                                <span>{formattedPrice}</span>
-                            )}
+                            ) : ( */}
+                            <span>{formattedPrice}</span>
+                            {/* )} */}
                         </LayerInViewAnim>
                     </div>
 

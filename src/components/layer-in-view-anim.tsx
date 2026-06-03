@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, Variants, Transition, HTMLMotionProps } from "motion/react";
-import React, { useMemo, ElementType } from "react";
+import { motion, Variants, Transition, HTMLMotionProps, useInView } from "motion/react";
+import React, { useMemo, ElementType, useRef } from "react";
 
 const physicsTransition: Transition = {
     type: "spring",
@@ -41,6 +41,8 @@ export const LayerInViewAnim = <T extends ElementType = "div">({
     ...rest
 }: LayerInViewAnimProps<T>) => {
     const MotionComponent = motion(as ?? "div");
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once, amount: 0 });
 
     const resolvedDelay = delay ?? (based === "physics" ? 0 : 0.4);
 
@@ -73,10 +75,10 @@ export const LayerInViewAnim = <T extends ElementType = "div">({
 
     return (
         <MotionComponent
+            ref={ref}
             variants={variants}
             initial="hidden"
-            whileInView="show"
-            viewport={{ once, amount }}
+            animate={isInView ? "show" : "hidden"}
             className={className}
             {...rest}
         >

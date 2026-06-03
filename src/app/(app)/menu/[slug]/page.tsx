@@ -218,7 +218,7 @@ export default async function MenuItemDetail({ params }: PageProps) {
                                 ) : <div />}
                             </div>
                         </div>
-                        <div className="ml-10 hidden">
+                        <div className="ml-10 hidden md:block">
                             <div className="pt-2.5 flex flex-wrap gap-2">
                                 {tagItems.map((item, index) => (
                                     <div key={item.id} className="flex flex-col gap-2">
