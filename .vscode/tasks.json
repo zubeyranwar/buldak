@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Remove Comments",
+      "type": "shell",
+      "command": "node ~/.vscode-scripts/remove-comments.js ${file}",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    }
+  ]
+}
