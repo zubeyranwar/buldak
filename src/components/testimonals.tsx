@@ -4,6 +4,7 @@ import { getPayload } from "payload";
 import { Container } from "./container";
 import { TestimonalSwiper } from "./testimonal-card";
 import { LayerInViewAnim } from "./layer-in-view-anim";
+import { GoogleReviews } from "./google-reviews";
 
 export type TestimonalDoc = {
     id: string;
@@ -43,7 +44,10 @@ export const Testimonals = async () => {
                     </div>
                 </div>
             </Container>
+
             <TestimonalSwiper testimonals={testimonals} />
+
+            <GoogleReviews />
         </section>
-    )
-}
+    );
+};
