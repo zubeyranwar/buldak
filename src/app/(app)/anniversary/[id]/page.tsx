@@ -8,11 +8,10 @@ import { motion } from "motion/react"
 interface Guest {
   id: string
   name: string
-  slug?: string;
   isConfirmed: boolean
 }
 
-export default function Anniversary({ params }: { params: Promise<{ slug: string }> }) {
+export default function Anniversary({ params }: { params: Promise<{ id: string }> }) {
   const [guest, setGuest] = useState<Guest | null>(null)
   const [loading, setLoading] = useState(true)
   const [confirming, setConfirming] = useState(false)
@@ -21,7 +20,7 @@ export default function Anniversary({ params }: { params: Promise<{ slug: string
   const [resolvedId, setResolvedId] = useState<string | null>(null)
 
   useEffect(() => {
-    params.then((p) => setResolvedId(p.slug))
+    params.then((p) => setResolvedId(p.id))
   }, [params])
 
   useEffect(() => {
