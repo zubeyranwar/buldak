@@ -18,6 +18,7 @@ import { TableLayout } from "./collections/TableLayout";
 import { Testimonal } from "./collections/Testimonal";
 import { Users } from "./collections/Users";
 import { PanoramaView } from "./collections/PanoramaView";
+import { Anniversary } from "./collections/Anniversary";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -80,7 +81,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Catagory, Menu, Testimonal, Reservation, FloorPlan, TableLayout, PanoramaView],
+  collections: [Users, Media, Catagory, Menu, Testimonal, Reservation, FloorPlan, TableLayout, PanoramaView, Anniversary],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

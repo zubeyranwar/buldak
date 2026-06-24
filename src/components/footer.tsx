@@ -13,8 +13,8 @@ export const Footer = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 md:gap-0">
                         <div className="spacer" />
-                        <LayerInViewAnim delay={0} className="md:col-span-2 flex flex-col md:flex-row items-center gap-2">
-                            <Image src="/logo.png" alt="Logo" width={200} height={202} />
+                        <LayerInViewAnim delay={0} className="md:col-span-2 flex flex-col md:flex-row items-center gap-4">
+                            <Image src="/buldak-logo.png" alt="Logo" width={300} height={300} />
                             <p className="heading md:heading">Buldak</p>
                         </LayerInViewAnim>
                         <LayerInViewAnim delay={0.2}>
@@ -42,7 +42,7 @@ export const Footer = () => {
                             </LayerInViewAnim>
 
                             <LayerInViewAnim as="p" based="time" className="body-low text-black!">
-                                served daily from 8 AM to 8 PM at behind skylight hotel
+                                served daily from 5 AM to 8 PM at behind skylight hotel
                             </LayerInViewAnim>
 
                             <div className="flex gap-2.5">

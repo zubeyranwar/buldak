@@ -12,21 +12,21 @@ export const Navbar = () => {
     const [open, setOpen] = useState(false);
 
     return (
-        <nav className="w-full">
+        <nav className="w-full pb-2">
             <Container>
                 <div className="mt-2 flex justify-between items-center">
                     <LayerInViewAnim className="hidden sm:block" based="physics" offsetY={18} scale={0.85} delay={0}>
                         <Link href="/menu" className="nav-link text-primary!">Menu {/*<span className="-ml-1 text-[12px]">{17}</span>*/}</Link>
                     </LayerInViewAnim>
                     <LayerInViewAnim based="physics" offsetY={18} scale={0.85} delay={0}>
-                        <Link href="/" className="flex gap-2 items-center">
+                        <Link href="/" className="flex gap-4 items-center">
                             <Image
-                                src="/logo.png"
+                                src="/buldak-logo.png"
                                 alt="Logo"
-                                width={60}
-                                height={62}
+                                width={100}
+                                height={100}
                             />
-                            <h2>Buldak</h2>
+                            <h2>Buldak Doro</h2>
                         </Link>
                     </LayerInViewAnim>
                     <div className="hidden sm:flex items-center gap-6">

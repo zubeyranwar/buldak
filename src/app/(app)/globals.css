@@ -121,6 +121,8 @@ body {
 
 .ann-headline {
   -webkit-text-stroke: 0 !important;
+  font-size: clamp(1.8rem, 10vw, 4rem);
+  word-break: break-word;
   text-shadow: none !important;
   text-transform: uppercase !important;
   font-family: var(--heading-font-family) !important;
@@ -131,13 +133,7 @@ body {
   width: 100%;
   height: 100%;
   filter:
-    brightness(0)
-    saturate(100%)
-    invert(42%)
-    sepia(90%)
-    saturate(480%)
-    hue-rotate(330deg)
-    brightness(0.75);
+    brightness(0) saturate(100%) invert(42%) sepia(90%) saturate(480%) hue-rotate(330deg) brightness(0.75);
 }
 
 .ann-texture {
@@ -158,13 +154,17 @@ body {
 
 .ann-skeleton {
   border-radius: 999px;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   opacity: 0.5;
   width: 210px;
   height: 46px;
 }
 
-@keyframes ann-spin { to { transform: rotate(360deg); } }
+@keyframes ann-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .ann-spinner {
   display: block;

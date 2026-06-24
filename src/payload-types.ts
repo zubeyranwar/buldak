@@ -76,6 +76,7 @@ export interface Config {
     'floor-plan': FloorPlan;
     'table-layout': TableLayout;
     'panorama-view': PanoramaView;
+    anniversary: Anniversary;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -92,6 +93,7 @@ export interface Config {
     'floor-plan': FloorPlanSelect<false> | FloorPlanSelect<true>;
     'table-layout': TableLayoutSelect<false> | TableLayoutSelect<true>;
     'panorama-view': PanoramaViewSelect<false> | PanoramaViewSelect<true>;
+    anniversary: AnniversarySelect<false> | AnniversarySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -441,6 +443,17 @@ export interface PanoramaView {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "anniversary".
+ */
+export interface Anniversary {
+  id: number;
+  name: string;
+  isConfirmed: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -498,6 +511,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'panorama-view';
         value: number | PanoramaView;
+      } | null)
+    | ({
+        relationTo: 'anniversary';
+        value: number | Anniversary;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -739,6 +756,16 @@ export interface PanoramaViewSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "anniversary_select".
+ */
+export interface AnniversarySelect<T extends boolean = true> {
+  name?: T;
+  isConfirmed?: T;
   updatedAt?: T;
   createdAt?: T;
 }
