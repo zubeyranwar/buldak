@@ -55,9 +55,6 @@ p {
         word-break: break-word;
         word-wrap: break-word;
         z-index: 1;
-        flex: none;
-        width: 100%;
-        height: auto;
         position: relative
 }
 
