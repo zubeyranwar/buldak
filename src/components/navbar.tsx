@@ -26,7 +26,7 @@ export const Navbar = () => {
                                 width={100}
                                 height={100}
                             />
-                            <h2>Buldak Doro</h2>
+                            <h2>Buldak</h2>
                         </Link>
                     </LayerInViewAnim>
                     <div className="hidden sm:flex items-center gap-6">
