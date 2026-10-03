@@ -3,6 +3,7 @@ import { Container } from "./container"
 import { Logo } from "./logo"
 import Link from "next/link"
 import { LayerInViewAnim } from "./layer-in-view-anim"
+import { CodeBy } from "./code-by"
 // import { CodeBy } from "./code-by"
 
 export const Footer = () => {
@@ -93,8 +94,8 @@ export const Footer = () => {
                     </div>
 
                     <div className="mt-4 md:mt-16 flex justify-between items-center">
-                        {/* <CodeBy /> */}
                         <p className="text-gray!">© 2026 Buldak</p>
+                        <CodeBy />
                     </div>
                 </LayerInViewAnim>
             </Container >

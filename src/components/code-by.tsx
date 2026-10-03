@@ -1,63 +1,45 @@
-// "use client"
+"use client";
 
-// import { motion, Variant } from "motion/react";
-// import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
-// interface TooltipPosition {
-//     x: number;
-//     y: number
-// }
-// // on hover i want to appear tooltip
-// export const CodeBy = () => {
-//     const containerRef = useRef<HTMLDivElement | null>(null)
+const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&";
+const TARGET = "code by zubeyr";
 
-//     const [onHover, setOnHover] = useState(false);
-//     const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | undefined>(undefined);
+export const CodeBy = () => {
+    const [displayText, setDisplayText] = useState(TARGET);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const iterationRef = useRef(0);
 
-//     useEffect(() => {
-//         if (!containerRef.current) return
+    const scramble = useCallback(() => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        iterationRef.current = 0;
 
-//         const mouseEnter = containerRef.current.addEventListener("mouseenter", () => {
-//             setOnHover(true);
-//             console.log({ mouseEnter: true })
-//         })
+        intervalRef.current = setInterval(() => {
+            const iteration = iterationRef.current;
+            setDisplayText(
+                TARGET.split("").map((char, i) => {
+                    if (char === " ") return " ";
+                    if (i < iteration) return TARGET[i];
+                    return CHARS[Math.floor(Math.random() * CHARS.length)];
+                }).join("")
+            );
+            iterationRef.current += 0.4;
+            if (iterationRef.current >= TARGET.length) {
+                clearInterval(intervalRef.current!);
+                setDisplayText(TARGET);
+            }
+        }, 30);
+    }, []);
 
-//         const mouseMove = containerRef.current.addEventListener("mousemove", (e) => {
-//             const clientX = e.clientX;
-//             const clientY = e.clientY;
-
-//             setTooltipPosition({ x: clientX, y: clientY })
-//         })
-
-//         const mouseLeave = containerRef.current.addEventListener("mouseleave", () => {
-//             setOnHover(false)
-//             console.log({ mouseLeave: true })
-//         })
-
-//         return () => {
-//             containerRef.current?.removeEventListener("mouseenter", mouseEnter)
-//             containerRef.current?.removeEventListener("mouseleave", mouseLeave)
-//             containerRef.current?.removeEventListener("mousemove", mouseMove)
-//         }
-//     }, [])
-
-//     useEffect(() => {
-
-//     }, [])
-
-//     const variant: Variant = {}
-
-//     return (
-//         <div className="relative" ref={containerRef}>
-//             <p className="text-gray! shrink-0">
-//                 Built By Zubeyr
-//             </p>
-
-//             {onHover && <motion.div>
-//                 <div className={`absolute top-4 left-2 bg-black-80 h-12`}>
-//                     <a className="text-white">zubeyranwar.vercel.app</a>
-//                 </div>
-//             </motion.div>}
-//         </div>
-//     )
-// }
+    return (
+        <a
+            href="https://zubeyr.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            onMouseEnter={scramble}
+            className="font-mono text-sm text-muted-foreground hover:text-foreground transition-colors tracking-wider select-none"
+        >
+            {displayText}
+        </a>
+    );
+};
